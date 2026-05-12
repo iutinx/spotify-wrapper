@@ -1,4 +1,3 @@
 .env
 venv
 spotify-wrapper.code-workspace
-__init__.py
