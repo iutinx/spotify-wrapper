@@ -1,163 +1,79 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import RedirectResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-import secrets
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 import logging
 
-from app.database import get_db
 from app.core.config import get_settings
-from app.core.security import (
-    verify_token,
-    get_current_user,
-    create_access_token,
-    create_refresh_token,
-    TokenData,
-)
-from app.schemas.auth import (
-    SpotifyLoginRequest,
-    TokenResponse,
-    RefreshTokenRequest,
-    LogoutResponse,
-)
-from app.services.spotify_service import spotify_service
-from app.services.user_service import user_service
+from app.api import auth, users
 
-router = APIRouter(prefix="/api/auth", tags=["auth"])
 settings = get_settings()
+
+# configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 logger = logging.getLogger(__name__)
 
-# store oauth states temporarily (use redis in production)
-_oauth_states = {}
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup and shutdown logic"""
+    logger.info("Starting Spotify Social Music Platform API")
+    yield
+    logger.info("Shutting down")
 
 
-@router.get("/spotify-login")
-async def spotify_login():
-    """
-    initiate spotify oauth flow
-    redirects user to spotify login page
-    """
-    state = secrets.token_urlsafe(32)
-    _oauth_states[state] = True
-    
-    auth_url = spotify_service.get_auth_url(state)
-    logger.info("oauth flow initiated")
-    return RedirectResponse(url=auth_url)
+# create FastAPI app
+app = FastAPI(
+    title="Spotify Social Music Platform API",
+    description="Backend API for the Spotify social music platform",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+# CORS middleware - allow requests from frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        settings.FRONTEND_URL,
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",  # vite dev server
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# include routers
+app.include_router(auth.router)
+app.include_router(users.router)
 
 
-@router.post("/spotify-callback")
-async def spotify_callback(
-    request: SpotifyLoginRequest,
-    session: AsyncSession = Depends(get_db),
-):
+@app.get("/health")
+async def health_check():
     """
-    handle spotify oauth callback
-    exchanges authorization code for access token and creates/updates user
+    health check endpoint for deployment monitoring
     """
-    # verify state parameter
-    if request.state not in _oauth_states:
-        logger.warning("Invalid OAuth state received")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid state parameter",
-        )
-    del _oauth_states[request.state]
-    
-    try:
-        # exchange code for spotify tokens
-        token_data = await spotify_service.get_access_token(request.code)
-        spotify_access_token = token_data.get("access_token")
-        spotify_refresh_token = token_data.get("refresh_token")
-        expires_in = token_data.get("expires_in", 3600)
-        
-        # get user info to extract spotify id
-        spotify_user = await spotify_service.get_current_user(spotify_access_token)
-        spotify_id = spotify_user.get("id")
-        
-        # create or update user in database
-        user = await user_service.create_or_update_user(
-            session,
-            spotify_id=spotify_id,
-            access_token=spotify_access_token,
-            refresh_token=spotify_refresh_token,
-            token_expires_in=expires_in,
-        )
-        
-        # create our jwt tokens
-        access_token = create_access_token(
-            spotify_id=user.spotify_id,
-            user_id=str(user.id),
-        )
-        refresh_token = create_refresh_token(
-            spotify_id=user.spotify_id,
-            user_id=str(user.id),
-        )
-        
-        logger.info(f"User authenticated: {user.spotify_id}")
-        
-        return TokenResponse(
-            access_token=access_token,
-            refresh_token=refresh_token,
-            expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        )
-    
-    except Exception as e:
-        logger.error(f"OAuth callback failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to authenticate with Spotify",
-        )
+    return {"status": "ok", "service": "spotify-social-api"}
 
 
-@router.post("/refresh", response_model=TokenResponse)
-async def refresh_access_token(
-    request: RefreshTokenRequest,
-    session: AsyncSession = Depends(get_db),
-):
-    """
-    refresh access token using refresh token
-    """
-    try:
-        token_data = verify_token(request.refresh_token)
-        
-        # verify user exists
-        user = await user_service.get_user_by_spotify_id(
-            session, token_data.spotify_id
-        )
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found",
-            )
-        
-        # create new access token
-        access_token = create_access_token(
-            spotify_id=user.spotify_id,
-            user_id=str(user.id),
-        )
-        
-        logger.info(f"Token refreshed for user: {user.spotify_id}")
-        
-        return TokenResponse(
-            access_token=access_token,
-            refresh_token=request.refresh_token,
-            expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        )
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Token refresh failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token",
-        )
+@app.get("/")
+async def root():
+    """root endpoint with api information"""
+    return {
+        "name": "Spotify Social Music Platform API",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "redoc": "/redoc",
+    }
 
 
-@router.post("/logout", response_model=LogoutResponse)
-async def logout(current_user: TokenData = Depends(get_current_user)):
-    """
-    logout endpoint
-    in production, could invalidate token in redis
-    """
-    logger.info(f"User logged out: {current_user.spotify_id}")
-    return LogoutResponse(message="Logged out successfully")
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "app.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=settings.DEBUG,
+    )
