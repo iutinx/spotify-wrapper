@@ -1,10 +1,11 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-import os
+from fastapi.security import HTTPBearer
+from starlette.requests import Request
+import logging
 
 from app.core.config import get_settings
 
@@ -16,7 +17,11 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # http bearer scheme
 
+security = HTTPBearer()
+
 bearer_scheme = HTTPBearer()
+
+
 
 class TokenData:
     """token payload structure"""
@@ -73,10 +78,23 @@ def verify_token(token: str) -> TokenData:
             detail="Invalid token"
         )
 
-async def get_current_user(credentials: HTTPAuthCredentials = Depends(security)) -> TokenData:
-    """dependency to get current user"""
-    token = credentials.credentials
-    return verify_token(token)
+async def get_current_user(request: Request) -> TokenData:
+    """Dependency to get current authenticated user from JWT token"""
+    auth = request.headers.get("authorization")
+    if not auth:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing authorization header"
+        )
+    try:
+        token = auth.split(" ")[1]
+        return verify_token(token)
+    except:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
+
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)

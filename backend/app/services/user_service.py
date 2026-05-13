@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import logging
 
-from app.models.user import User, UserProfile
+from app.models.users import User, UserProfile
 from app.schemas.user import UserProfileRequest
 from app.services.spotify_service import spotify_service
 

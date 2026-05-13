@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any
 from datetime import datetime, timedelta, timezone
 
 
-from app.core.settings import get_settings
+from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 settings = get_settings()

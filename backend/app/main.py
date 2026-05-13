@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 import logging
 
 from app.core.config import get_settings
-from app.api import auth, users
+from app.api import auth, user
 
 settings = get_settings()
 
@@ -47,7 +47,7 @@ app.add_middleware(
 
 # include routers
 app.include_router(auth.router)
-app.include_router(users.router)
+app.include_router(user.router)
 
 
 @app.get("/health")
