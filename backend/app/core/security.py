@@ -11,16 +11,10 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
-# password hashing
-
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# http bearer scheme
-
 security = HTTPBearer()
-
 bearer_scheme = HTTPBearer()
-
 
 
 class TokenData:
@@ -29,7 +23,6 @@ class TokenData:
         self.spotify_id = spotify_id
         self.user_id = user_id
 
-# token generation
 
 def create_access_token(spotify_id: str, user_id: str, expires_delta: Optional[timedelta] = None) -> str:
     """create jwt access token"""
@@ -38,11 +31,14 @@ def create_access_token(spotify_id: str, user_id: str, expires_delta: Optional[t
         "user_id": user_id,
         "type": "access",
     }
-    
+
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
 def create_refresh_token(spotify_id: str, user_id: str) -> str:
@@ -55,13 +51,13 @@ def create_refresh_token(spotify_id: str, user_id: str) -> str:
 
     expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-    return encoded_jwt
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
 
 def verify_token(token: str) -> TokenData:
     """verify jwt token"""
     try:
-        payload =jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         spotify_id = payload.get("spotify_id")
         user_id = payload.get("user_id")
         token_type = payload.get("type")
@@ -69,7 +65,7 @@ def verify_token(token: str) -> TokenData:
         if spotify_id is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                 detail="Invalid token"
+                detail="Invalid token"
             )
         return TokenData(spotify_id=spotify_id, user_id=user_id)
     except JWTError:
@@ -77,6 +73,7 @@ def verify_token(token: str) -> TokenData:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token"
         )
+
 
 async def get_current_user(request: Request) -> TokenData:
     """Dependency to get current authenticated user from JWT token"""
@@ -99,6 +96,6 @@ async def get_current_user(request: Request) -> TokenData:
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
-
