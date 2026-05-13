@@ -1,19 +1,21 @@
-version: '3.8'
+name: spotify-wrapper-backend
 
 services:
   postgres:
     image: postgres:15-alpine
     container_name: spotify_postgres
     environment:
-      POSTGRES_USER: spotify_user
-      POSTGRES_PASSWORD: spotify_password
-      POSTGRES_DB: spotify_db
+      # interpolated from backend/.env when you run compose from backend/ (same file the app uses).
+      POSTGRES_USER: ${POSTGRES_USER:-spotify_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-spotify_password}
+      POSTGRES_DB: ${POSTGRES_DB:-spotify_db}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U spotify_user"]
+      # default DB name would match the user (spotify_user) POSTGRES_DB is spotify_db
+      test: ["CMD-SHELL", "pg_isready -U spotify_user -d spotify_db"]
       interval: 10s
       timeout: 5s
       retries: 5
