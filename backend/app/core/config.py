@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    # ssl
+
+    SSL_CERTFILE: Optional[str] = None
+    SSL_KEYFILE: Optional[str] = None
+
     # spotify
 
     SPOTIFY_CLIENT_ID: str

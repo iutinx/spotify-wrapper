@@ -2,6 +2,7 @@ import httpx
 import logging
 from typing import Optional, Dict, Any 
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlencode
 
 
 from app.core.config import get_settings
@@ -41,8 +42,8 @@ class SpotifyService:
             "scope": " ".join(scopes),
             "state": state,
         }
-        
-        query_string = "&".join(f"{k}={v}" for k, v in params.items())
+
+        query_string = urlencode(params)
         return f"{self.auth_url}?{query_string}"
 
     async def get_access_token(self, code: str) -> Dict[str, Any]:
@@ -136,19 +137,19 @@ class SpotifyService:
             return response.json()
     
     async def get_user_top_artists(
-        self, 
-        access_token: str, 
-        time_range: str = "short_term", 
+        self,
+        access_token: str,
+        time_range: str = "short_term",
         limit: int = 50
     ) -> Dict[str, Any]:
         """
         get user s top artists from spotify
-        
+
         args:
             access_token: valid spotify access token
             time_range: 'short_term', 'medium_term', or 'long_term'
             limit: number of artists to return (max 50)
-        
+
         returns - response with items array of artist objects
         """
         async with httpx.AsyncClient() as client:
@@ -156,6 +157,29 @@ class SpotifyService:
                 f"{self.api_base_url}/me/top/artists",
                 headers={"Authorization": f"Bearer {access_token}"},
                 params={"time_range": time_range, "limit": limit},
+            )
+            response.raise_for_status()
+            return response.json()
+
+    async def get_recently_played(
+        self,
+        access_token: str,
+        limit: int = 50
+    ) -> Dict[str, Any]:
+        """
+        get user's recently played tracks
+
+        args:
+            access_token: valid spotify access token
+            limit: number of tracks to return (max 50)
+
+        returns - response with items array of play history objects
+        """
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{self.api_base_url}/me/player/recently-played",
+                headers={"Authorization": f"Bearer {access_token}"},
+                params={"limit": limit},
             )
             response.raise_for_status()
             return response.json()
