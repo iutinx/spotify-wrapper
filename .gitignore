@@ -2,3 +2,6 @@
 venv
 spotify-wrapper.code-workspace
 .cursor
+misc/
+*.pem
+*.key
