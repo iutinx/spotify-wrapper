@@ -1,19 +1,32 @@
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
-from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
 import logging
+from contextlib import asynccontextmanager
 
+from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, JSONResponse
+from pydantic import ValidationError
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+
+from app.api import analytics, auth, social, user
 from app.core.config import get_settings
-from app.api import auth, user, analytics, social
-from app.services.cache_service import get_redis, close_redis
+from app.core.security import create_access_token, create_refresh_token
+from app.database import AsyncSessionLocal
+from app.services.cache_service import close_redis, get_redis
 from app.services.oauth_state import OAuthStateStore
 from app.services.spotify_service import spotify_service
 from app.services.user_service import user_service
-from app.core.security import create_access_token, create_refresh_token
-from app.database import AsyncSessionLocal
 
 settings = get_settings()
+
+# Rate limiter setup (must be before app creation)
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["100/minute", "1000/hour"],
+    storage_uri=f"redis://{settings.REDIS_URL}",
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -27,6 +40,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Spotify Social Music Platform API")
     await get_redis()
     logger.info("Redis connection established")
+    limiter.app_config = app
     yield
     await close_redis()
     logger.info("Shutting down")
@@ -38,6 +52,45 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    logger.warning(f"Validation error: {exc.errors()}")
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "error": "validation_error",
+            "detail": exc.errors(),
+        },
+    )
+
+
+@app.exception_handler(ValidationError)
+async def pydantic_validation_exception_handler(request: Request, exc: ValidationError):
+    logger.warning(f"Pydantic validation error: {exc.errors()}")
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "error": "validation_error",
+            "detail": exc.errors(),
+        },
+    )
+
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "error": "internal_error",
+            "detail": "An unexpected error occurred",
+        },
+    )
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -99,17 +152,21 @@ async def auth_callback(code: str, state: str):
             )
 
             access_token = create_access_token(
-                spotify_id=user.spotify_id, user_id=str(user.id),
+                spotify_id=user.spotify_id,
+                user_id=str(user.id),
             )
             refresh_token = create_refresh_token(
-                spotify_id=user.spotify_id, user_id=str(user.id),
+                spotify_id=user.spotify_id,
+                user_id=str(user.id),
             )
 
-        return HTMLResponse(CALLBACK_HTML.format(
-            access_token=access_token,
-            refresh_token=refresh_token,
-            expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        ))
+        return HTMLResponse(
+            CALLBACK_HTML.format(
+                access_token=access_token,
+                refresh_token=refresh_token,
+                expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            )
+        )
 
     except Exception as e:
         logger.error(f"OAuth callback failed: {e}")
@@ -133,6 +190,7 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
+
     ssl_kwargs = {}
     if settings.SSL_CERTFILE and settings.SSL_KEYFILE:
         ssl_kwargs["ssl_certfile"] = settings.SSL_CERTFILE

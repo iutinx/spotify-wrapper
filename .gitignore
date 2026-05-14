@@ -5,3 +5,5 @@ spotify-wrapper.code-workspace
 misc/
 *.pem
 *.key
+opencode/
+*.md
