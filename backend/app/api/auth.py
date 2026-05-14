@@ -1,26 +1,27 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-import logging
 
-from app.database import get_db
 from app.core.config import get_settings
 from app.core.security import (
-    verify_token,
-    get_current_user,
+    TokenData,
     create_access_token,
     create_refresh_token,
-    TokenData,
+    get_current_user,
+    verify_token,
 )
+from app.database import get_db
 from app.schemas.auth import (
+    LogoutResponse,
+    RefreshTokenRequest,
     SpotifyLoginRequest,
     TokenResponse,
-    RefreshTokenRequest,
-    LogoutResponse,
 )
+from app.services.oauth_state import OAuthStateStore
 from app.services.spotify_service import spotify_service
 from app.services.user_service import user_service
-from app.services.oauth_state import OAuthStateStore
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 settings = get_settings()
@@ -98,9 +99,7 @@ async def refresh_access_token(
     try:
         token_data = verify_token(request.refresh_token)
 
-        user = await user_service.get_user_by_spotify_id(
-            session, token_data.spotify_id
-        )
+        user = await user_service.get_user_by_spotify_id(session, token_data.spotify_id)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

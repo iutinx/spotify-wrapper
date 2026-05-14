@@ -1,26 +1,26 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-from uuid import UUID
 import logging
+from uuid import UUID
 
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.security import TokenData, get_current_user
 from app.database import get_db
-from app.core.security import get_current_user, TokenData
-from app.services.cache_service import get_cache, CacheService
-from app.services.social_service import SocialService
-from app.services.matching_service import MatchingService, LeaderboardService
-from app.services.user_service import user_service
-from app.models import User, UserProfile, Friendship, Notification
+from app.models import Friendship, User, UserProfile
 from app.schemas.social import (
     FriendRequestCreate,
     FriendshipResponse,
-    NotificationResponse,
-    MusicMatchResponse,
-    LeaderboardResponse,
     LeaderboardEntry,
+    LeaderboardResponse,
+    MusicMatchResponse,
+    NotificationResponse,
     UserSearchResponse,
 )
-from app.schemas.user import UserResponse, UserProfileResponse
+from app.services.cache_service import get_cache
+from app.services.matching_service import LeaderboardService, MatchingService
+from app.services.social_service import SocialService
+from app.services.user_service import user_service
 
 router = APIRouter(prefix="/api/social", tags=["social"])
 logger = logging.getLogger(__name__)
@@ -39,7 +39,9 @@ def _build_user_search_response(user: User, profile: UserProfile = None) -> User
         display_name=user.display_name,
         profile_image_url=user.profile_image_url,
         bio=profile.bio if profile else None,
-        favorite_genres=profile.favorite_genres.split(",") if profile and profile.favorite_genres else None,
+        favorite_genres=profile.favorite_genres.split(",")
+        if profile and profile.favorite_genres
+        else None,
     )
 
 
@@ -244,14 +246,16 @@ async def get_notifications(
                 profile = profile_result.scalar_one_or_none()
                 from_user = _build_user_search_response(from_user_obj, profile)
 
-        result.append(NotificationResponse(
-            id=n.id,
-            type=n.type,
-            from_user=from_user,
-            message=n.message,
-            is_read=n.is_read,
-            created_at=n.created_at,
-        ))
+        result.append(
+            NotificationResponse(
+                id=n.id,
+                type=n.type,
+                from_user=from_user,
+                message=n.message,
+                is_read=n.is_read,
+                created_at=n.created_at,
+            )
+        )
 
     return result
 
@@ -338,11 +342,13 @@ async def get_leaderboard(
         )
         profile = profile_result.scalar_one_or_none()
 
-        entries.append(LeaderboardEntry(
-            rank=e["rank"],
-            user=_build_user_search_response(user_obj, profile),
-            total_hours_listened=e["total_hours_listened"],
-            listening_streak=e["listening_streak"],
-        ))
+        entries.append(
+            LeaderboardEntry(
+                rank=e["rank"],
+                user=_build_user_search_response(user_obj, profile),
+                total_hours_listened=e["total_hours_listened"],
+                listening_streak=e["listening_streak"],
+            )
+        )
 
     return LeaderboardResponse(entries=entries)

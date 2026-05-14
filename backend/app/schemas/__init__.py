@@ -1,20 +1,20 @@
-from app.schemas.user import UserResponse, UserProfileResponse, UserProfileRequest
-from app.schemas.auth import SpotifyLoginRequest, RefreshTokenRequest, TokenResponse, LogoutResponse
 from app.schemas.analytics import (
-    TopTracksResponse,
-    TopArtistsResponse,
-    ListeningStatsResponse,
     AnalyticsSyncResponse,
+    ListeningStatsResponse,
+    TopArtistsResponse,
+    TopTracksResponse,
 )
+from app.schemas.auth import LogoutResponse, RefreshTokenRequest, SpotifyLoginRequest, TokenResponse
 from app.schemas.social import (
     FriendRequestCreate,
     FriendshipResponse,
-    NotificationResponse,
-    MusicMatchResponse,
-    LeaderboardResponse,
     LeaderboardEntry,
+    LeaderboardResponse,
+    MusicMatchResponse,
+    NotificationResponse,
     UserSearchResponse,
 )
+from app.schemas.user import UserProfileRequest, UserProfileResponse, UserResponse
 
 __all__ = [
     "UserResponse",

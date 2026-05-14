@@ -88,18 +88,13 @@ class Settings(BaseSettings):
         if self.POSTGRES_DB:
             u = u.set(database=self.POSTGRES_DB)
         u = u.set(drivername="postgresql")
-        return self.model_copy(
-            update={"DATABASE_URL": u.render_as_string(hide_password=False)}
-        )
+        return self.model_copy(update={"DATABASE_URL": u.render_as_string(hide_password=False)})
+
 
 @lru_cache
-
 def get_settings() -> Settings:
     return Settings()
 
+
 # from app.core.config import get_settings
 # settings = get_settings()
-
-
-
-

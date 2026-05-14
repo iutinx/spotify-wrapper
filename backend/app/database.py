@@ -1,7 +1,8 @@
+from collections.abc import AsyncGenerator
+
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from typing import AsyncGenerator
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 from app.core.config import get_settings
 
@@ -28,6 +29,7 @@ AsyncSessionLocal = sessionmaker(
 )
 
 Base = declarative_base()
+
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:

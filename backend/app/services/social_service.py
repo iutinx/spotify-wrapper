@@ -1,14 +1,12 @@
-import json
 import logging
-from typing import Optional, List
+from typing import Optional
 from uuid import UUID
-from datetime import datetime, timedelta
 
-from sqlalchemy import select, and_, or_
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import User, UserProfile, Friendship, Notification
-from app.core.constants import FriendshipStatus, NotificationType, CACHE_TTL_MATCHING_RESULTS
+from app.core.constants import FriendshipStatus, NotificationType
+from app.models import Friendship, Notification, User
 from app.services.cache_service import CacheService
 
 logger = logging.getLogger(__name__)
@@ -23,8 +21,14 @@ class SocialService:
         existing = await self.session.execute(
             select(Friendship).where(
                 or_(
-                    and_(Friendship.requester_id == requester_id, Friendship.receiver_id == receiver_id),
-                    and_(Friendship.requester_id == receiver_id, Friendship.receiver_id == requester_id),
+                    and_(
+                        Friendship.requester_id == requester_id,
+                        Friendship.receiver_id == receiver_id,
+                    ),
+                    and_(
+                        Friendship.requester_id == receiver_id,
+                        Friendship.receiver_id == requester_id,
+                    ),
                 )
             )
         )
@@ -67,7 +71,9 @@ class SocialService:
         if not friendship:
             raise ValueError("Friend request not found")
 
-        friendship.status = FriendshipStatus.ACCEPTED.value if accept else FriendshipStatus.PENDING.value
+        friendship.status = (
+            FriendshipStatus.ACCEPTED.value if accept else FriendshipStatus.PENDING.value
+        )
         if not accept:
             await self.session.delete(friendship)
         await self.session.commit()
@@ -92,8 +98,12 @@ class SocialService:
         result = await self.session.execute(
             select(Friendship).where(
                 or_(
-                    and_(Friendship.requester_id == blocker_id, Friendship.receiver_id == blocked_id),
-                    and_(Friendship.requester_id == blocked_id, Friendship.receiver_id == blocker_id),
+                    and_(
+                        Friendship.requester_id == blocker_id, Friendship.receiver_id == blocked_id
+                    ),
+                    and_(
+                        Friendship.requester_id == blocked_id, Friendship.receiver_id == blocker_id
+                    ),
                 )
             )
         )
@@ -113,7 +123,7 @@ class SocialService:
         await self.session.refresh(friendship)
         return friendship
 
-    async def get_friends(self, user_id: UUID) -> List[Friendship]:
+    async def get_friends(self, user_id: UUID) -> list[Friendship]:
         result = await self.session.execute(
             select(Friendship).where(
                 and_(
@@ -124,15 +134,20 @@ class SocialService:
         )
         return list(result.scalars().all())
 
-    async def get_pending_requests(self, user_id: UUID) -> List[Friendship]:
+    async def get_pending_requests(self, user_id: UUID) -> list[Friendship]:
         result = await self.session.execute(
             select(Friendship).where(
-                and_(Friendship.receiver_id == user_id, Friendship.status == FriendshipStatus.PENDING.value)
+                and_(
+                    Friendship.receiver_id == user_id,
+                    Friendship.status == FriendshipStatus.PENDING.value,
+                )
             )
         )
         return list(result.scalars().all())
 
-    async def get_notifications(self, user_id: UUID, unread_only: bool = False) -> List[Notification]:
+    async def get_notifications(
+        self, user_id: UUID, unread_only: bool = False
+    ) -> list[Notification]:
         query = select(Notification).where(Notification.user_id == user_id)
         if unread_only:
             query = query.where(Notification.is_read == False)
@@ -154,14 +169,16 @@ class SocialService:
         await self.session.refresh(notification)
         return notification
 
-    async def search_users(self, query: str, current_user_id: UUID) -> List[User]:
+    async def search_users(self, query: str, current_user_id: UUID) -> list[User]:
         result = await self.session.execute(
-            select(User).where(
+            select(User)
+            .where(
                 and_(
                     User.id != current_user_id,
                     User.display_name.ilike(f"%{query}%"),
                 )
-            ).limit(20)
+            )
+            .limit(20)
         )
         return list(result.scalars().all())
 

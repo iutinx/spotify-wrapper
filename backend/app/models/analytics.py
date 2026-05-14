@@ -1,13 +1,15 @@
-from sqlalchemy import Column, String, DateTime, Integer, ForeignKey, Index, Text
-from sqlalchemy.dialects.postgresql import UUID
-from datetime import datetime
 import uuid
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy.dialects.postgresql import UUID
 
 from app.database import Base
 
 
 class UserTopTrack(Base):
     """Cached top tracks for a user per time range"""
+
     __tablename__ = "user_top_tracks"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -30,6 +32,7 @@ class UserTopTrack(Base):
 
 class UserTopArtist(Base):
     """Cached top artists for a user per time range"""
+
     __tablename__ = "user_top_artists"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -51,6 +54,7 @@ class UserTopArtist(Base):
 
 class ListeningHistory(Base):
     """Recently played tracks for streak/stats"""
+
     __tablename__ = "listening_history"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

@@ -1,8 +1,7 @@
-import secrets
 import logging
-from typing import Optional
+import secrets
 
-from app.services.cache_service import get_cache, CacheService
+from app.services.cache_service import get_cache
 
 logger = logging.getLogger(__name__)
 

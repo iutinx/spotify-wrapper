@@ -1,11 +1,11 @@
-import time
 import logging
-from typing import Optional, Callable
-from fastapi import Request, HTTPException, status
+import time
+from collections.abc import Callable
+
+from fastapi import HTTPException, Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.services.cache_service import get_cache, CacheService
-from app.core.constants import SPOTIFY_API_RATE_LIMIT_REQUESTS, SPOTIFY_API_RATE_LIMIT_WINDOW
+from app.services.cache_service import get_cache
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +25,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         if current is not None and int(current) >= self.requests:
             raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Rate limit exceeded"
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Rate limit exceeded"
             )
 
         pipe = cache.client.pipeline()

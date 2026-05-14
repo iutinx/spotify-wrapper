@@ -1,11 +1,11 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+
+from fastapi import HTTPException, status
+from fastapi.security import HTTPBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer
 from starlette.requests import Request
-import logging
 
 from app.core.config import get_settings
 
@@ -19,12 +19,15 @@ bearer_scheme = HTTPBearer()
 
 class TokenData:
     """token payload structure"""
+
     def __init__(self, spotify_id: str, user_id: Optional[str] = None):
         self.spotify_id = spotify_id
         self.user_id = user_id
 
 
-def create_access_token(spotify_id: str, user_id: str, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(
+    spotify_id: str, user_id: str, expires_delta: Optional[timedelta] = None
+) -> str:
     """create jwt access token"""
     to_encode = {
         "spotify_id": spotify_id,
@@ -63,16 +66,10 @@ def verify_token(token: str) -> TokenData:
         token_type = payload.get("type")
 
         if spotify_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token"
-            )
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
         return TokenData(spotify_id=spotify_id, user_id=user_id)
     except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
 
 async def get_current_user(request: Request) -> TokenData:
@@ -80,17 +77,13 @@ async def get_current_user(request: Request) -> TokenData:
     auth = request.headers.get("authorization")
     if not auth:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing authorization header"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing authorization header"
         )
     try:
         token = auth.split(" ")[1]
         return verify_token(token)
     except:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
 
 def hash_password(password: str) -> str:
