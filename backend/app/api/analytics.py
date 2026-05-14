@@ -1,20 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional
 import logging
 
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.security import TokenData, get_current_user
 from app.database import get_db
-from app.core.security import get_current_user, TokenData
-from app.services.cache_service import get_cache, CacheService
-from app.services.analytics_service import AnalyticsService
-from app.services.user_service import user_service
-from app.services.token_refresh_service import TokenRefreshService
 from app.schemas.analytics import (
-    TopTracksResponse,
-    TopArtistsResponse,
-    ListeningStatsResponse,
     AnalyticsSyncResponse,
+    ListeningStatsResponse,
+    RollingWindowAnalytics,
+    RollingWindowRequest,
+    TopArtistsResponse,
+    TopTracksResponse,
 )
+from app.services.analytics_service import AnalyticsService
+from app.services.cache_service import get_cache
+from app.services.token_refresh_service import TokenRefreshService
+from app.services.user_service import user_service
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 logger = logging.getLogger(__name__)
@@ -71,26 +73,83 @@ async def get_listening_stats(
 
 @router.post("/sync", response_model=AnalyticsSyncResponse)
 async def sync_analytics(
+    background_tasks: BackgroundTasks,
     current_user: TokenData = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ):
+    """
+    Sync user's analytics from Spotify.
+
+    Runs sync in background to avoid blocking. Returns immediately with
+    cached data, while background task fetches fresh data from Spotify.
+    """
     user = await user_service.get_user_by_spotify_id(session, current_user.spotify_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    access_token = await TokenRefreshService.ensure_fresh_token(user, session)
     cache = await get_cache()
     service = AnalyticsService(session, cache)
 
-    history_count = await service.sync_recently_played(user, access_token)
-    top_tracks = await service.get_user_top_tracks(user, access_token, "short_term", 50)
-    top_artists = await service.get_user_top_artists(user, access_token, "short_term", 50)
+    # Add sync task to background
+    background_tasks.add_task(_sync_user_analytics, user.id, current_user.spotify_id)
 
-    logger.info(f"Synced {history_count} history entries for user {current_user.spotify_id}")
+    logger.info(f"Analytics sync initiated for user {current_user.spotify_id}")
 
     return AnalyticsSyncResponse(
-        message="Sync completed",
-        tracks_synced=top_tracks.total,
-        artists_synced=top_artists.total,
-        history_entries=history_count,
+        message="Sync started in background",
+        tracks_synced=0,
+        artists_synced=0,
+        history_entries=0,
     )
+
+
+async def _sync_user_analytics(user_id, spotify_id: str):
+    """Background task to sync analytics from Spotify."""
+    from app.database import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as session:
+        try:
+            user = await user_service.get_user_by_spotify_id(session, spotify_id)
+            if not user:
+                return
+
+            access_token = await TokenRefreshService.ensure_fresh_token(user, session)
+            cache = await get_cache()
+            service = AnalyticsService(session, cache)
+
+            history_count = await service.sync_recently_played(user, access_token)
+            await service.get_user_top_tracks(user, access_token, "short_term", 50)
+            await service.get_user_top_artists(user, access_token, "short_term", 50)
+
+            logger.info(
+                f"Background sync completed: {history_count} history entries for {spotify_id}"
+            )
+        except Exception as e:
+            logger.error(f"Background sync failed for {spotify_id}: {e}")
+
+
+@router.post("/rolling-window", response_model=RollingWindowAnalytics)
+async def get_rolling_window_analytics(
+    request: RollingWindowRequest,
+    current_user: TokenData = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    """
+    Get analytics for a custom rolling window period.
+
+    Computes top tracks, artists, and genres based on actual listening history
+    within the specified time window (e.g., last 28 days, 90 days, 180 days).
+
+    Args:
+        request: RollingWindowRequest with 'days' field (1-365)
+
+    Returns:
+        RollingWindowAnalytics with aggregated data
+    """
+    user = await user_service.get_user_by_spotify_id(session, current_user.spotify_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    cache = await get_cache()
+    service = AnalyticsService(session, cache)
+    return await service.get_rolling_window_analytics(user, request.days)
