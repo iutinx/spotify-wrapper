@@ -1,13 +1,17 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import HTTPException, status
+from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
 from app.core.config import get_settings
+from app.database import get_db
+from app.models.users import User
+from app.services.user_service import user_service
 
 settings = get_settings()
 
@@ -86,6 +90,21 @@ async def get_current_user(request: Request) -> TokenData:
         return verify_token(token)
     except (IndexError, JWTError):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+
+async def get_current_user_db(
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+) -> User:
+    """Dependency to get the fully authenticated User model from JWT + DB."""
+    token_data = await get_current_user(request)
+    user = await user_service.get_user_by_spotify_id(session, token_data.spotify_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    return user
 
 
 def hash_password(password: str) -> str:

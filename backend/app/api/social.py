@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import TokenData, get_current_user
+from app.core.security import get_current_user_db
 from app.database import get_db
 from app.models import Friendship, User, UserProfile
 from app.schemas.social import (
@@ -20,17 +20,9 @@ from app.schemas.social import (
 from app.services.cache_service import get_cache
 from app.services.matching_service import LeaderboardService, MatchingService
 from app.services.social_service import SocialService
-from app.services.user_service import user_service
 
 router = APIRouter(prefix="/api/social", tags=["social"])
 logger = logging.getLogger(__name__)
-
-
-async def get_social_service():
-    cache = await get_cache()
-    db = get_db()
-    async for session in db:
-        yield SocialService(session, cache)
 
 
 def _build_user_search_response(user: User, profile: UserProfile = None) -> UserSearchResponse:
@@ -56,13 +48,9 @@ def _build_friendship_response(friendship: Friendship) -> FriendshipResponse:
 @router.post("/friends/request")
 async def send_friend_request(
     request: FriendRequestCreate,
-    current_user: TokenData = Depends(get_current_user),
+    user: User = Depends(get_current_user_db),
     session: AsyncSession = Depends(get_db),
 ):
-    user = await user_service.get_user_by_spotify_id(session, current_user.spotify_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     if request.user_id == user.id:
         raise HTTPException(status_code=400, detail="Cannot friend yourself")
 
@@ -80,13 +68,9 @@ async def send_friend_request(
 @router.put("/friends/{friendship_id}/accept")
 async def accept_friend_request(
     friendship_id: UUID,
-    current_user: TokenData = Depends(get_current_user),
+    user: User = Depends(get_current_user_db),
     session: AsyncSession = Depends(get_db),
 ):
-    user = await user_service.get_user_by_spotify_id(session, current_user.spotify_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     cache = await get_cache()
     service = SocialService(session, cache)
 
@@ -101,13 +85,9 @@ async def accept_friend_request(
 @router.put("/friends/{friendship_id}/reject")
 async def reject_friend_request(
     friendship_id: UUID,
-    current_user: TokenData = Depends(get_current_user),
+    user: User = Depends(get_current_user_db),
     session: AsyncSession = Depends(get_db),
 ):
-    user = await user_service.get_user_by_spotify_id(session, current_user.spotify_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     cache = await get_cache()
     service = SocialService(session, cache)
 
@@ -122,13 +102,9 @@ async def reject_friend_request(
 @router.delete("/friends/{friendship_id}")
 async def remove_friendship(
     friendship_id: UUID,
-    current_user: TokenData = Depends(get_current_user),
+    user: User = Depends(get_current_user_db),
     session: AsyncSession = Depends(get_db),
 ):
-    user = await user_service.get_user_by_spotify_id(session, current_user.spotify_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     cache = await get_cache()
     service = SocialService(session, cache)
 
@@ -142,13 +118,9 @@ async def remove_friendship(
 
 @router.get("/friends")
 async def get_friends(
-    current_user: TokenData = Depends(get_current_user),
+    user: User = Depends(get_current_user_db),
     session: AsyncSession = Depends(get_db),
 ):
-    user = await user_service.get_user_by_spotify_id(session, current_user.spotify_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     cache = await get_cache()
     service = SocialService(session, cache)
     friendships = await service.get_friends(user.id)
@@ -177,13 +149,9 @@ async def get_friends(
 
 @router.get("/friends/pending")
 async def get_pending_requests(
-    current_user: TokenData = Depends(get_current_user),
+    user: User = Depends(get_current_user_db),
     session: AsyncSession = Depends(get_db),
 ):
-    user = await user_service.get_user_by_spotify_id(session, current_user.spotify_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     cache = await get_cache()
     service = SocialService(session, cache)
     friendships = await service.get_pending_requests(user.id)
@@ -207,13 +175,9 @@ async def get_pending_requests(
 @router.post("/block/{user_id}")
 async def block_user(
     user_id: UUID,
-    current_user: TokenData = Depends(get_current_user),
+    user: User = Depends(get_current_user_db),
     session: AsyncSession = Depends(get_db),
 ):
-    user = await user_service.get_user_by_spotify_id(session, current_user.spotify_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     cache = await get_cache()
     service = SocialService(session, cache)
     await service.block_user(user.id, user_id)
@@ -223,13 +187,9 @@ async def block_user(
 @router.get("/notifications")
 async def get_notifications(
     unread_only: bool = Query(False),
-    current_user: TokenData = Depends(get_current_user),
+    user: User = Depends(get_current_user_db),
     session: AsyncSession = Depends(get_db),
 ):
-    user = await user_service.get_user_by_spotify_id(session, current_user.spotify_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     cache = await get_cache()
     service = SocialService(session, cache)
     notifications = await service.get_notifications(user.id, unread_only)
@@ -263,13 +223,9 @@ async def get_notifications(
 @router.put("/notifications/{notification_id}/read")
 async def mark_notification_read(
     notification_id: UUID,
-    current_user: TokenData = Depends(get_current_user),
+    user: User = Depends(get_current_user_db),
     session: AsyncSession = Depends(get_db),
 ):
-    user = await user_service.get_user_by_spotify_id(session, current_user.spotify_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     cache = await get_cache()
     service = SocialService(session, cache)
 
@@ -284,13 +240,9 @@ async def mark_notification_read(
 @router.get("/search")
 async def search_users(
     q: str = Query(..., min_length=1),
-    current_user: TokenData = Depends(get_current_user),
+    user: User = Depends(get_current_user_db),
     session: AsyncSession = Depends(get_db),
 ):
-    user = await user_service.get_user_by_spotify_id(session, current_user.spotify_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     cache = await get_cache()
     service = SocialService(session, cache)
     users = await service.search_users(q, user.id)
@@ -309,13 +261,9 @@ async def search_users(
 @router.get("/match/{user_id}", response_model=MusicMatchResponse)
 async def get_music_match(
     user_id: UUID,
-    current_user: TokenData = Depends(get_current_user),
+    user: User = Depends(get_current_user_db),
     session: AsyncSession = Depends(get_db),
 ):
-    user = await user_service.get_user_by_spotify_id(session, current_user.spotify_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     cache = await get_cache()
     service = MatchingService(session, cache)
     return await service.compute_music_match(user.id, user_id)
@@ -323,13 +271,9 @@ async def get_music_match(
 
 @router.get("/leaderboard", response_model=LeaderboardResponse)
 async def get_leaderboard(
-    current_user: TokenData = Depends(get_current_user),
+    user: User = Depends(get_current_user_db),
     session: AsyncSession = Depends(get_db),
 ):
-    user = await user_service.get_user_by_spotify_id(session, current_user.spotify_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     service = LeaderboardService(session)
     entries_data = await service.get_friends_leaderboard(user.id)
 

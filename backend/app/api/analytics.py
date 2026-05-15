@@ -1,10 +1,11 @@
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import TokenData, get_current_user
+from app.core.security import get_current_user_db
 from app.database import get_db
+from app.models.users import User
 from app.schemas.analytics import (
     AnalyticsSyncResponse,
     ListeningStatsResponse,
@@ -26,13 +27,9 @@ logger = logging.getLogger(__name__)
 async def get_top_tracks(
     time_range: str = Query("short_term", pattern="^(short_term|medium_term|long_term)$"),
     limit: int = Query(50, ge=1, le=50),
-    current_user: TokenData = Depends(get_current_user),
+    user: User = Depends(get_current_user_db),
     session: AsyncSession = Depends(get_db),
 ):
-    user = await user_service.get_user_by_spotify_id(session, current_user.spotify_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     access_token = await TokenRefreshService.ensure_fresh_token(user, session)
     cache = await get_cache()
     service = AnalyticsService(session, cache)
@@ -43,13 +40,9 @@ async def get_top_tracks(
 async def get_top_artists(
     time_range: str = Query("short_term", pattern="^(short_term|medium_term|long_term)$"),
     limit: int = Query(50, ge=1, le=50),
-    current_user: TokenData = Depends(get_current_user),
+    user: User = Depends(get_current_user_db),
     session: AsyncSession = Depends(get_db),
 ):
-    user = await user_service.get_user_by_spotify_id(session, current_user.spotify_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     access_token = await TokenRefreshService.ensure_fresh_token(user, session)
     cache = await get_cache()
     service = AnalyticsService(session, cache)
@@ -58,13 +51,9 @@ async def get_top_artists(
 
 @router.get("/stats", response_model=ListeningStatsResponse)
 async def get_listening_stats(
-    current_user: TokenData = Depends(get_current_user),
+    user: User = Depends(get_current_user_db),
     session: AsyncSession = Depends(get_db),
 ):
-    user = await user_service.get_user_by_spotify_id(session, current_user.spotify_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     access_token = await TokenRefreshService.ensure_fresh_token(user, session)
     cache = await get_cache()
     service = AnalyticsService(session, cache)
@@ -74,7 +63,7 @@ async def get_listening_stats(
 @router.post("/sync", response_model=AnalyticsSyncResponse)
 async def sync_analytics(
     background_tasks: BackgroundTasks,
-    current_user: TokenData = Depends(get_current_user),
+    user: User = Depends(get_current_user_db),
     session: AsyncSession = Depends(get_db),
 ):
     """
@@ -83,17 +72,13 @@ async def sync_analytics(
     Runs sync in background to avoid blocking. Returns immediately with
     cached data, while background task fetches fresh data from Spotify.
     """
-    user = await user_service.get_user_by_spotify_id(session, current_user.spotify_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     cache = await get_cache()
     _ = AnalyticsService(session, cache)
 
     # Add sync task to background
-    background_tasks.add_task(_sync_user_analytics, user.id, current_user.spotify_id)
+    background_tasks.add_task(_sync_user_analytics, user.id, user.spotify_id)
 
-    logger.info(f"Analytics sync initiated for user {current_user.spotify_id}")
+    logger.info(f"Analytics sync initiated for user {user.spotify_id}")
 
     return AnalyticsSyncResponse(
         message="Sync started in background",
@@ -131,7 +116,7 @@ async def _sync_user_analytics(user_id, spotify_id: str):
 @router.post("/rolling-window", response_model=RollingWindowAnalytics)
 async def get_rolling_window_analytics(
     request: RollingWindowRequest,
-    current_user: TokenData = Depends(get_current_user),
+    user: User = Depends(get_current_user_db),
     session: AsyncSession = Depends(get_db),
 ):
     """
@@ -146,10 +131,6 @@ async def get_rolling_window_analytics(
     Returns:
         RollingWindowAnalytics with aggregated data
     """
-    user = await user_service.get_user_by_spotify_id(session, current_user.spotify_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     cache = await get_cache()
     service = AnalyticsService(session, cache)
     return await service.get_rolling_window_analytics(user, request.days)
