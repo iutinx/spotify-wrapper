@@ -150,7 +150,7 @@ class SocialService:
     ) -> list[Notification]:
         query = select(Notification).where(Notification.user_id == user_id)
         if unread_only:
-            query = query.where(Notification.is_read == False)
+            query = query.where(Notification.is_read is False)
         query = query.order_by(Notification.created_at.desc())
         result = await self.session.execute(query)
         return list(result.scalars().all())

@@ -88,7 +88,7 @@ async def sync_analytics(
         raise HTTPException(status_code=404, detail="User not found")
 
     cache = await get_cache()
-    service = AnalyticsService(session, cache)
+    _ = AnalyticsService(session, cache)
 
     # Add sync task to background
     background_tasks.add_task(_sync_user_analytics, user.id, current_user.spotify_id)

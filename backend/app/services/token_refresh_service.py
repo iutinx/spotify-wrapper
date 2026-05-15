@@ -36,7 +36,9 @@ class TokenRefreshService:
             user.spotify_access_token = new_access_token
             if new_refresh_token:
                 user.spotify_refresh_token = new_refresh_token
-            user.spotify_token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+            user.spotify_token_expires_at = datetime.now(timezone.utc) + timedelta(
+                seconds=expires_in
+            )
 
             await session.commit()
             logger.info(f"Auto-refreshed Spotify token for user {user.spotify_id}")

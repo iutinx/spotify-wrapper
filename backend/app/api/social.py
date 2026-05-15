@@ -91,7 +91,7 @@ async def accept_friend_request(
     service = SocialService(session, cache)
 
     try:
-        friendship = await service.respond_to_friend_request(friendship_id, user.id, accept=True)
+        await service.respond_to_friend_request(friendship_id, user.id, accept=True)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

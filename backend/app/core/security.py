@@ -38,7 +38,9 @@ def create_access_token(
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(
+            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+        )
 
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
@@ -63,7 +65,7 @@ def verify_token(token: str) -> TokenData:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         spotify_id = payload.get("spotify_id")
         user_id = payload.get("user_id")
-        token_type = payload.get("type")
+        _ = payload.get("type")
 
         if spotify_id is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
@@ -82,7 +84,7 @@ async def get_current_user(request: Request) -> TokenData:
     try:
         token = auth.split(" ")[1]
         return verify_token(token)
-    except:
+    except (IndexError, JWTError):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
 
