@@ -17,6 +17,14 @@ class NotificationType(str, Enum):
     MESSAGE = "message"
 
 
+class ActivityVisibility(str, Enum):
+    """activity visibility settings for currently playing sharing"""
+
+    PUBLIC = "public"
+    FRIENDS_ONLY = "friends_only"
+    PRIVATE = "private"
+
+
 # spotify API pagination
 SPOTIFY_PAGINATION_LIMIT = 50
 SPOTIFY_API_RATE_LIMIT_REQUESTS = 4  # concurrent requests

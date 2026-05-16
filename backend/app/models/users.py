@@ -1,9 +1,10 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Index, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 
+from app.core.constants import ActivityVisibility
 from app.database import Base
 
 
@@ -65,9 +66,78 @@ class UserProfile(Base):
 
     # privacy settings
     is_public = Column(Boolean, default=True)  # whether profile is visible to others
+    activity_visibility = Column(
+        String(20),
+        default=ActivityVisibility.FRIENDS_ONLY.value,
+        nullable=False,
+    )
 
     # timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     __table_args__ = (Index("idx_user_profiles_user_id", "user_id"),)
+
+
+class UserActivity(Base):
+    """
+    user activity - currently playing track and playback state
+    """
+
+    __tablename__ = "user_activity"
+
+    # primary key
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # foreign key to users table
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # current track info
+    spotify_track_id = Column(String(255), nullable=True)
+    track_name = Column(String(500), nullable=True)
+    artist_name = Column(String(500), nullable=True)
+    album_name = Column(String(500), nullable=True)
+    image_url = Column(String(500), nullable=True)
+
+    # playback state
+    is_playing = Column(Boolean, default=False, nullable=False)
+    progress_ms = Column(Integer, nullable=True)
+    duration_ms = Column(Integer, nullable=True)
+
+    # timestamps
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    __table_args__ = (Index("idx_user_activity_user_id", "user_id"),)
+
+
+class UserActivityHistory(Base):
+    """
+    user activity history - persisted record of what user listened to
+    """
+
+    __tablename__ = "user_activity_history"
+
+    # primary key
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # foreign key to users table
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # track info
+    spotify_track_id = Column(String(255), nullable=False)
+    track_name = Column(String(500), nullable=False)
+    artist_name = Column(String(500), nullable=False)
+    album_name = Column(String(500), nullable=True)
+    image_url = Column(String(500), nullable=True)
+
+    # playback details
+    duration_ms = Column(Integer, nullable=True)
+
+    # timestamps
+    started_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    ended_at = Column(DateTime, nullable=True)
+
+    __table_args__ = (
+        Index("idx_user_activity_history_user_id", "user_id"),
+        Index("idx_user_activity_history_started", "started_at"),
+    )
