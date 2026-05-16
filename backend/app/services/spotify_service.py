@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import urlencode
 
 import httpx
@@ -33,6 +33,7 @@ class SpotifyService:
             "user-read-email",
             "user-top-read",
             "user-read-recently-played",
+            "user-read-currently-playing",
         ]
 
         params = {
@@ -171,6 +172,25 @@ class SpotifyService:
                 headers={"Authorization": f"Bearer {access_token}"},
                 params={"limit": limit},
             )
+            response.raise_for_status()
+            return response.json()
+
+    async def get_currently_playing(self, access_token: str) -> Optional[dict[str, Any]]:
+        """
+        get user's currently playing track
+
+        args:
+            access_token: valid spotify access token
+
+        returns - currently playing object or None if nothing is playing
+        """
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{self.api_base_url}/me/player/currently-playing",
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            if response.status_code == 204:
+                return None
             response.raise_for_status()
             return response.json()
 
