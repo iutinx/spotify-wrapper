@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import get_current_user_db
 from app.database import get_db
 from app.models.users import User
+from app.schemas.realtime import ActivityPrivacyRequest, ActivityPrivacyResponse
 from app.schemas.user import UserProfileRequest, UserProfileResponse, UserResponse
 from app.services.user_service import user_service
 
@@ -63,6 +64,47 @@ async def update_user_profile(
         profile = await user_service.update_user_profile(session, user_id, profile_data)
         logger.info(f"Updated profile for user: {user_id}")
         return UserProfileResponse(**profile.__dict__)
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+
+
+@router.put("/me/activity-privacy", response_model=ActivityPrivacyResponse)
+async def update_activity_privacy(
+    request: ActivityPrivacyRequest,
+    user: User = Depends(get_current_user_db),
+    session: AsyncSession = Depends(get_db),
+):
+    """
+    update activity visibility setting for currently playing sharing.
+    controls who can see what you're listening to in real-time.
+
+    visibility options:
+        - public: anyone can see your activity
+        - friends_only: only friends can see your activity
+        - private: no one can see your activity
+    """
+    from app.core.constants import ActivityVisibility
+
+    # validate visibility value
+    valid_values = [v.value for v in ActivityVisibility]
+    if request.visibility not in valid_values:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"invalid visibility. must be one of: {', '.join(valid_values)}",
+        )
+
+    try:
+        profile = await user_service.update_user_profile(
+            session,
+            str(user.id),
+            UserProfileRequest(activity_visibility=request.visibility),
+        )
+        logger.info(f"updated activity privacy for user {user.id}: {request.visibility}")
+        return ActivityPrivacyResponse(visibility=profile.activity_visibility)
 
     except ValueError as e:
         raise HTTPException(
