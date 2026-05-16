@@ -5,6 +5,16 @@ from app.schemas.analytics import (
     TopTracksResponse,
 )
 from app.schemas.auth import LogoutResponse, RefreshTokenRequest, SpotifyLoginRequest, TokenResponse
+from app.schemas.realtime import (
+    ActivityHistoryEntry,
+    ActivityHistoryResponse,
+    ActivityPrivacyRequest,
+    ActivityPrivacyResponse,
+    CurrentlyPlayingTrack,
+    UserActivityUpdate,
+    WebSocketAuthRequest,
+    WebSocketMessage,
+)
 from app.schemas.social import (
     FriendRequestCreate,
     FriendshipResponse,
@@ -35,4 +45,12 @@ __all__ = [
     "LeaderboardResponse",
     "LeaderboardEntry",
     "UserSearchResponse",
+    "CurrentlyPlayingTrack",
+    "UserActivityUpdate",
+    "ActivityPrivacyRequest",
+    "ActivityPrivacyResponse",
+    "ActivityHistoryEntry",
+    "ActivityHistoryResponse",
+    "WebSocketMessage",
+    "WebSocketAuthRequest",
 ]

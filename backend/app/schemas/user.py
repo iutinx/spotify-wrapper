@@ -12,6 +12,7 @@ class UserProfileRequest(BaseModel):
     favorite_genres: Optional[list[str]] = None
     favorite_artists: Optional[list[str]] = None
     is_public: Optional[bool] = None
+    activity_visibility: Optional[str] = Field(None, pattern="^(public|friends_only|private)$")
 
 
 class UserProfileResponse(BaseModel):
@@ -25,6 +26,7 @@ class UserProfileResponse(BaseModel):
     total_hours_listened: int
     listening_streak: int
     is_public: bool
+    activity_visibility: str
     created_at: datetime
     updated_at: datetime
 
