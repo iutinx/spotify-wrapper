@@ -5,6 +5,7 @@ from app.schemas.analytics import (
     TopTracksResponse,
 )
 from app.schemas.auth import LogoutResponse, RefreshTokenRequest, SpotifyLoginRequest, TokenResponse
+from app.schemas.errors import ErrorResponse, FieldError
 from app.schemas.realtime import (
     ActivityHistoryEntry,
     ActivityHistoryResponse,
@@ -53,4 +54,6 @@ __all__ = [
     "ActivityHistoryResponse",
     "WebSocketMessage",
     "WebSocketAuthRequest",
+    "ErrorResponse",
+    "FieldError",
 ]

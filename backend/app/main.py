@@ -1,19 +1,31 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 from pydantic import ValidationError
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api import analytics, auth, realtime, social, user
 from app.core.config import get_settings
+from app.core.errors import (
+    create_authentication_error,
+    create_bad_request_error,
+    create_error_response,
+    create_forbidden_error,
+    create_internal_error,
+    create_not_found_error,
+    create_rate_limit_error,
+    create_validation_error,
+)
 from app.core.security import create_access_token, create_refresh_token
 from app.database import AsyncSessionLocal
+from app.schemas.errors import FieldError
 from app.services.cache_service import close_redis, get_redis
 from app.services.oauth_state import OAuthStateStore
 from app.services.spotify_service import spotify_service
@@ -53,43 +65,111 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """Handle HTTPException with RFC 7807 format."""
+    if isinstance(exc, HTTPException):
+        # Map common HTTP exceptions to our error format
+        if exc.status_code == status.HTTP_401_UNAUTHORIZED:
+            return create_authentication_error(request, exc.detail)
+        elif exc.status_code == status.HTTP_403_FORBIDDEN:
+            return create_forbidden_error(request, exc.detail)
+        elif exc.status_code == status.HTTP_404_NOT_FOUND:
+            return create_not_found_error(request, exc.detail)
+        elif exc.status_code == status.HTTP_400_BAD_REQUEST:
+            # Check for business logic error codes in detail
+            code = "bad_request"
+            if "yourself" in exc.detail.lower():
+                code = "self_friend_request_forbidden"
+            elif "blocked" in exc.detail.lower():
+                code = "user_is_blocked"
+            elif "already friends" in exc.detail.lower():
+                code = "already_friends"
+            elif "pending" in exc.detail.lower():
+                code = "friend_request_pending"
+            return create_bad_request_error(request, exc.detail, code)
+        elif exc.status_code == status.HTTP_409_CONFLICT:
+            return create_error_response(
+                request=request,
+                status_code=status.HTTP_409_CONFLICT,
+                title="Conflict",
+                detail=exc.detail,
+                code="conflict",
+            )
+        elif exc.status_code == status.HTTP_429_TOO_MANY_REQUESTS:
+            return create_rate_limit_error(request, exc.detail)
+
+    # Fallback for unhandled HTTP exceptions
+    return create_error_response(
+        request=request,
+        status_code=exc.status_code,
+        title=f"HTTP {exc.status_code}",
+        detail=exc.detail,
+        code=f"http_{exc.status_code}",
+    )
 
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle request validation errors with RFC 7807 format."""
     logger.warning(f"Validation error: {exc.errors()}")
-    return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={
-            "error": "validation_error",
-            "detail": exc.errors(),
-        },
+
+    # Convert validation errors to field errors
+    field_errors = []
+    for error in exc.errors():
+        field_errors.append(
+            FieldError(
+                field=".".join(str(x) for x in error.get("loc", [])),
+                message=error.get("msg", "Invalid value"),
+                code=error.get("type", "value_error"),
+            )
+        )
+
+    return create_validation_error(
+        request=request,
+        detail="Request validation failed",
+        field_errors=field_errors,
     )
 
 
 @app.exception_handler(ValidationError)
 async def pydantic_validation_exception_handler(request: Request, exc: ValidationError):
+    """Handle Pydantic validation errors with RFC 7807 format."""
     logger.warning(f"Pydantic validation error: {exc.errors()}")
-    return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={
-            "error": "validation_error",
-            "detail": exc.errors(),
-        },
+
+    # Convert validation errors to field errors
+    field_errors = []
+    for error in exc.errors():
+        field_errors.append(
+            FieldError(
+                field=".".join(str(x) for x in error.get("loc", [])),
+                message=error.get("msg", "Invalid value"),
+                code=error.get("type", "value_error"),
+            )
+        )
+
+    return create_validation_error(
+        request=request,
+        detail="Response validation failed",
+        field_errors=field_errors,
     )
 
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
+    """Handle unhandled exceptions with RFC 7807 format."""
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={
-            "error": "internal_error",
-            "detail": "An unexpected error occurred",
-        },
-    )
+    return create_internal_error(request, str(exc) if str(exc) else "An unexpected error occurred")
+
+
+# Custom rate limit handler with RFC 7807 format
+async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    """Handle rate limit exceeded with RFC 7807 format."""
+    return create_rate_limit_error(request, str(exc))
+
+
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 
 app.add_middleware(
@@ -454,7 +534,7 @@ WS_TEST_HTML = """<!DOCTYPE html>
                 <button class="btn-secondary" id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
             </div>
             <p style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-secondary);">
-                ⚠️ <strong>Important:</strong> You must re-authenticate with Spotify to grant the <code>user-read-currently-playing</code> scope. 
+                ⚠️ <strong>Important:</strong> You must re-authenticate with Spotify to grant the <code>user-read-currently-playing</code> scope.
                 Visit <a href="/api/auth/spotify-login" style="color: var(--accent);">/api/auth/spotify-login</a> to get a new token.
             </p>
         </div>
@@ -587,13 +667,13 @@ WS_TEST_HTML = """<!DOCTYPE html>
 
         function renderActivity(payload, isMe) {
             const track = payload.track;
-            
+
             // Check if there's actually a track playing
             if (!track.track_name && !track.is_playing) {
                 log('no track currently playing', 'info');
                 return;
             }
-            
+
             const html = `
                 <div class="activity-item">
                     <img src="${track.image_url || ''}" alt="album art" onerror="this.style.display='none'" />
