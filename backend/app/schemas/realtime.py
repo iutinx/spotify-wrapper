@@ -59,6 +59,7 @@ class ActivityHistoryResponse(BaseModel):
 
     entries: list[ActivityHistoryEntry]
     total: int
+    next_cursor: Optional[str] = None
 
 
 class WebSocketMessage(BaseModel):

@@ -287,14 +287,64 @@ class CurrentlyPlayingService:
         self,
         user_id: UUID,
         limit: int = 50,
-        offset: int = 0,
-    ) -> list[UserActivityHistory]:
-        """get activity history for a user"""
-        result = await self.session.execute(
+        cursor: Optional[str] = None,
+    ) -> tuple[list[UserActivityHistory], Optional[str]]:
+        """
+        get activity history for a user with cursor pagination.
+
+        args:
+            user_id: user uuid
+            limit: max items to return (1-100)
+            cursor: opaque cursor from previous response (base64-encoded started_at timestamp)
+
+        returns:
+            tuple of (items list, next_cursor or None)
+        """
+        import base64
+        from datetime import datetime
+
+        # Decode cursor to get last seen timestamp
+        last_started_at = None
+        if cursor:
+            try:
+                decoded = base64.b64decode(cursor).decode("utf-8")
+                last_started_at = datetime.fromisoformat(decoded.replace("Z", "+00:00"))
+            except (ValueError, Exception):
+                # Invalid cursor, ignore and start from beginning
+                last_started_at = None
+
+        # Query with cursor-based pagination
+        query = (
             select(UserActivityHistory)
             .where(UserActivityHistory.user_id == user_id)
             .order_by(UserActivityHistory.started_at.desc())
-            .limit(limit)
-            .offset(offset)
+            .limit(limit + 1)  # Fetch one extra to check if there's more
         )
-        return list(result.scalars().all())
+
+        if last_started_at:
+            query = query.where(UserActivityHistory.started_at < last_started_at)
+
+        result = await self.session.execute(query)
+        items = list(result.scalars().all())
+
+        # Check if there are more items
+        has_more = len(items) > limit
+        if has_more:
+            items = items[:limit]  # Remove the extra item
+
+        # Generate next cursor from last item's started_at
+        next_cursor = None
+        if has_more and items:
+            last_item = items[-1]
+            next_cursor = base64.b64encode(last_item.started_at.isoformat().encode()).decode()
+
+        return items, next_cursor
+
+    async def get_activity_history_count(self, user_id: UUID) -> int:
+        """get total count of activity history entries for a user"""
+        from sqlalchemy import func
+
+        result = await self.session.execute(
+            select(func.count()).select_from(UserActivityHistory).where(UserActivityHistory.user_id == user_id)
+        )
+        return result.scalar() or 0
