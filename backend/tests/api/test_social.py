@@ -18,12 +18,13 @@ async def test_search_users_requires_auth(unauthenticated_client: AsyncClient):
 async def test_search_users_with_auth(mock_search, mock_cache, client: AsyncClient):
     """Test search endpoint returns results with mocked services."""
     mock_cache.return_value = MagicMock()
-    mock_search.return_value = []
+    mock_search.return_value = ([], None)  # Now returns tuple (items, next_cursor)
 
     response = await client.get("/api/social/search?q=test")
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(data, list)
+    assert "items" in data
+    assert "pagination" in data
 
 
 @pytest.mark.asyncio
