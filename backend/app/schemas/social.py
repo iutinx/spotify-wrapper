@@ -5,6 +5,14 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
+class PaginationInfo(BaseModel):
+    """pagination metadata for cursor-based pagination"""
+
+    limit: int
+    next_cursor: Optional[str] = None
+    has_more: bool = False
+
+
 class UserSearchResponse(BaseModel):
     id: UUID
     display_name: Optional[str]
@@ -78,3 +86,24 @@ class LeaderboardEntry(BaseModel):
 
 class LeaderboardResponse(BaseModel):
     entries: list[LeaderboardEntry]
+
+
+class PaginatedFriendshipsResponse(BaseModel):
+    """paginated list of friendships"""
+
+    items: list[FriendshipResponse]
+    pagination: PaginationInfo
+
+
+class PaginatedNotificationsResponse(BaseModel):
+    """paginated list of notifications"""
+
+    items: list[NotificationResponse]
+    pagination: PaginationInfo
+
+
+class PaginatedUserSearchResponse(BaseModel):
+    """paginated list of user search results"""
+
+    items: list[UserSearchResponse]
+    pagination: PaginationInfo

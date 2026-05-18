@@ -123,37 +123,144 @@ class SocialService:
         await self.session.refresh(friendship)
         return friendship
 
-    async def get_friends(self, user_id: UUID) -> list[Friendship]:
-        result = await self.session.execute(
-            select(Friendship).where(
+    async def get_friends(
+        self,
+        user_id: UUID,
+        limit: int = 20,
+        cursor: Optional[str] = None,
+    ) -> tuple[list[Friendship], Optional[str]]:
+        """get friends with cursor pagination"""
+        import base64
+        from datetime import datetime
+
+        # Decode cursor to get last seen created_at
+        last_created_at = None
+        if cursor:
+            try:
+                decoded = base64.b64decode(cursor).decode("utf-8")
+                last_created_at = datetime.fromisoformat(decoded.replace("Z", "+00:00"))
+            except (ValueError, Exception):
+                last_created_at = None
+
+        # Query with cursor-based pagination
+        query = (
+            select(Friendship)
+            .where(
                 and_(
                     or_(Friendship.requester_id == user_id, Friendship.receiver_id == user_id),
                     Friendship.status == FriendshipStatus.ACCEPTED.value,
                 )
             )
+            .order_by(Friendship.created_at.desc())
+            .limit(limit + 1)
         )
-        return list(result.scalars().all())
 
-    async def get_pending_requests(self, user_id: UUID) -> list[Friendship]:
-        result = await self.session.execute(
-            select(Friendship).where(
+        if last_created_at:
+            query = query.where(Friendship.created_at < last_created_at)
+
+        result = await self.session.execute(query)
+        items = list(result.scalars().all())
+
+        # Check if there are more items
+        has_more = len(items) > limit
+        if has_more:
+            items = items[:limit]
+
+        # Generate next cursor
+        next_cursor = None
+        if has_more and items:
+            last_item = items[-1]
+            next_cursor = base64.b64encode(last_item.created_at.isoformat().encode()).decode()
+
+        return items, next_cursor
+
+    async def get_pending_requests(
+        self,
+        user_id: UUID,
+        limit: int = 20,
+        cursor: Optional[str] = None,
+    ) -> tuple[list[Friendship], Optional[str]]:
+        """get pending friend requests with cursor pagination"""
+        import base64
+        from datetime import datetime
+
+        last_created_at = None
+        if cursor:
+            try:
+                decoded = base64.b64decode(cursor).decode("utf-8")
+                last_created_at = datetime.fromisoformat(decoded.replace("Z", "+00:00"))
+            except (ValueError, Exception):
+                last_created_at = None
+
+        query = (
+            select(Friendship)
+            .where(
                 and_(
                     Friendship.receiver_id == user_id,
                     Friendship.status == FriendshipStatus.PENDING.value,
                 )
             )
+            .order_by(Friendship.created_at.desc())
+            .limit(limit + 1)
         )
-        return list(result.scalars().all())
+
+        if last_created_at:
+            query = query.where(Friendship.created_at < last_created_at)
+
+        result = await self.session.execute(query)
+        items = list(result.scalars().all())
+
+        has_more = len(items) > limit
+        if has_more:
+            items = items[:limit]
+
+        next_cursor = None
+        if has_more and items:
+            last_item = items[-1]
+            next_cursor = base64.b64encode(last_item.created_at.isoformat().encode()).decode()
+
+        return items, next_cursor
 
     async def get_notifications(
-        self, user_id: UUID, unread_only: bool = False
-    ) -> list[Notification]:
+        self,
+        user_id: UUID,
+        unread_only: bool = False,
+        limit: int = 20,
+        cursor: Optional[str] = None,
+    ) -> tuple[list[Notification], Optional[str]]:
+        """get notifications with cursor pagination"""
+        import base64
+        from datetime import datetime
+
+        last_created_at = None
+        if cursor:
+            try:
+                decoded = base64.b64decode(cursor).decode("utf-8")
+                last_created_at = datetime.fromisoformat(decoded.replace("Z", "+00:00"))
+            except (ValueError, Exception):
+                last_created_at = None
+
         query = select(Notification).where(Notification.user_id == user_id)
         if unread_only:
             query = query.where(Notification.is_read is False)
-        query = query.order_by(Notification.created_at.desc())
+        query = query.order_by(Notification.created_at.desc()).limit(limit + 1)
+
+        if last_created_at:
+            query = query.where(Notification.created_at < last_created_at)
+
         result = await self.session.execute(query)
-        return list(result.scalars().all())
+        items = list(result.scalars().all())
+
+        has_more = len(items) > limit
+        if has_more:
+            items = items[:limit]
+
+        next_cursor = None
+        if has_more and items:
+            last_item = items[-1]
+            next_cursor = base64.b64encode(last_item.created_at.isoformat().encode()).decode()
+
+        return items, next_cursor
 
     async def mark_notification_read(self, notification_id: UUID, user_id: UUID) -> Notification:
         result = await self.session.execute(
@@ -169,8 +276,27 @@ class SocialService:
         await self.session.refresh(notification)
         return notification
 
-    async def search_users(self, query: str, current_user_id: UUID) -> list[User]:
-        result = await self.session.execute(
+    async def search_users(
+        self,
+        query: str,
+        current_user_id: UUID,
+        limit: int = 20,
+        cursor: Optional[str] = None,
+    ) -> tuple[list[User], Optional[str]]:
+        """search users by display name with cursor pagination"""
+        import base64
+
+        # Decode cursor to get last seen ID
+        last_id = None
+        if cursor:
+            try:
+                decoded = base64.b64decode(cursor).decode("utf-8")
+                last_id = UUID(decoded)
+            except (ValueError, Exception):
+                last_id = None
+
+        # Query with cursor-based pagination
+        query_stmt = (
             select(User)
             .where(
                 and_(
@@ -178,9 +304,28 @@ class SocialService:
                     User.display_name.ilike(f"%{query}%"),
                 )
             )
-            .limit(20)
+            .order_by(User.display_name.asc(), User.id.asc())
+            .limit(limit + 1)
         )
-        return list(result.scalars().all())
+
+        if last_id:
+            query_stmt = query_stmt.where(User.id > last_id)
+
+        result = await self.session.execute(query_stmt)
+        items = list(result.scalars().all())
+
+        # Check if there are more items
+        has_more = len(items) > limit
+        if has_more:
+            items = items[:limit]
+
+        # Generate next cursor from last item's ID
+        next_cursor = None
+        if has_more and items:
+            last_item = items[-1]
+            next_cursor = base64.b64encode(str(last_item.id).encode()).decode()
+
+        return items, next_cursor
 
     async def get_user_by_id(self, user_id: UUID) -> Optional[User]:
         result = await self.session.execute(select(User).where(User.id == user_id))

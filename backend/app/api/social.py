@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -15,6 +16,10 @@ from app.schemas.social import (
     LeaderboardResponse,
     MusicMatchResponse,
     NotificationResponse,
+    PaginatedFriendshipsResponse,
+    PaginatedNotificationsResponse,
+    PaginatedUserSearchResponse,
+    PaginationInfo,
     UserSearchResponse,
 )
 from app.services.cache_service import get_cache
@@ -116,14 +121,22 @@ async def remove_friendship(
     return {"message": "Friendship removed"}
 
 
-@router.get("/friends")
+@router.get("/friends", response_model=PaginatedFriendshipsResponse)
 async def get_friends(
+    limit: int = Query(20, ge=1, le=100, description="Number of friends to return"),
+    cursor: Optional[str] = Query(None, description="Cursor for pagination"),
     user: User = Depends(get_current_user_db),
     session: AsyncSession = Depends(get_db),
 ):
+    """
+    get user's friends list with cursor pagination.
+
+    returns accepted friendships ordered by creation date (newest first).
+    use `next_cursor` from response to fetch the next page.
+    """
     cache = await get_cache()
     service = SocialService(session, cache)
-    friendships = await service.get_friends(user.id)
+    friendships, next_cursor = await service.get_friends(user.id, limit, cursor)
 
     result = []
     for f in friendships:
@@ -144,17 +157,31 @@ async def get_friends(
                 profile if f.receiver_id == user.id else profile,
             )
 
-    return result
+    return PaginatedFriendshipsResponse(
+        items=result,
+        pagination=PaginationInfo(
+            limit=limit,
+            next_cursor=next_cursor,
+            has_more=next_cursor is not None,
+        ),
+    )
 
 
-@router.get("/friends/pending")
+@router.get("/friends/pending", response_model=PaginatedFriendshipsResponse)
 async def get_pending_requests(
+    limit: int = Query(20, ge=1, le=100, description="Number of requests to return"),
+    cursor: Optional[str] = Query(None, description="Cursor for pagination"),
     user: User = Depends(get_current_user_db),
     session: AsyncSession = Depends(get_db),
 ):
+    """
+    get pending friend requests with cursor pagination.
+
+    returns requests where user is the receiver, ordered by creation date (newest first).
+    """
     cache = await get_cache()
     service = SocialService(session, cache)
-    friendships = await service.get_pending_requests(user.id)
+    friendships, next_cursor = await service.get_pending_requests(user.id, limit, cursor)
 
     result = []
     for f in friendships:
@@ -169,7 +196,14 @@ async def get_pending_requests(
             resp.receiver = _build_user_search_response(user, None)
             result.append(resp)
 
-    return result
+    return PaginatedFriendshipsResponse(
+        items=result,
+        pagination=PaginationInfo(
+            limit=limit,
+            next_cursor=next_cursor,
+            has_more=next_cursor is not None,
+        ),
+    )
 
 
 @router.post("/block/{user_id}")
@@ -184,15 +218,23 @@ async def block_user(
     return {"message": "User blocked"}
 
 
-@router.get("/notifications")
+@router.get("/notifications", response_model=PaginatedNotificationsResponse)
 async def get_notifications(
     unread_only: bool = Query(False),
+    limit: int = Query(20, ge=1, le=100, description="Number of notifications to return"),
+    cursor: Optional[str] = Query(None, description="Cursor for pagination"),
     user: User = Depends(get_current_user_db),
     session: AsyncSession = Depends(get_db),
 ):
+    """
+    get user's notifications with cursor pagination.
+
+    returns notifications ordered by creation date (newest first).
+    use `unread_only=true` to get only unread notifications.
+    """
     cache = await get_cache()
     service = SocialService(session, cache)
-    notifications = await service.get_notifications(user.id, unread_only)
+    notifications, next_cursor = await service.get_notifications(user.id, unread_only, limit, cursor)
 
     result = []
     for n in notifications:
@@ -217,7 +259,14 @@ async def get_notifications(
             )
         )
 
-    return result
+    return PaginatedNotificationsResponse(
+        items=result,
+        pagination=PaginationInfo(
+            limit=limit,
+            next_cursor=next_cursor,
+            has_more=next_cursor is not None,
+        ),
+    )
 
 
 @router.put("/notifications/{notification_id}/read")
@@ -237,15 +286,23 @@ async def mark_notification_read(
     return {"message": "Notification marked as read"}
 
 
-@router.get("/search")
+@router.get("/search", response_model=PaginatedUserSearchResponse)
 async def search_users(
-    q: str = Query(..., min_length=1),
+    q: str = Query(..., min_length=1, description="Search query"),
+    limit: int = Query(20, ge=1, le=100, description="Number of results to return"),
+    cursor: Optional[str] = Query(None, description="Cursor for pagination"),
     user: User = Depends(get_current_user_db),
     session: AsyncSession = Depends(get_db),
 ):
+    """
+    search users by display name with cursor pagination.
+
+    returns users whose display name contains the query string.
+    results are ordered alphabetically by display name.
+    """
     cache = await get_cache()
     service = SocialService(session, cache)
-    users = await service.search_users(q, user.id)
+    users, next_cursor = await service.search_users(q, user.id, limit, cursor)
 
     result = []
     for u in users:
@@ -255,7 +312,14 @@ async def search_users(
         profile = profile_result.scalar_one_or_none()
         result.append(_build_user_search_response(u, profile))
 
-    return result
+    return PaginatedUserSearchResponse(
+        items=result,
+        pagination=PaginationInfo(
+            limit=limit,
+            next_cursor=next_cursor,
+            has_more=next_cursor is not None,
+        ),
+    )
 
 
 @router.get("/match/{user_id}", response_model=MusicMatchResponse)
