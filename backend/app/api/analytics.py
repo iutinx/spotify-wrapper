@@ -9,6 +9,7 @@ from app.models.users import User
 from app.schemas.analytics import (
     AnalyticsSyncResponse,
     ListeningStatsResponse,
+    RecentlyPlayedResponse,
     RollingWindowAnalytics,
     RollingWindowRequest,
     TopArtistsResponse,
@@ -58,6 +59,18 @@ async def get_listening_stats(
     cache = await get_cache()
     service = AnalyticsService(session, cache)
     return await service.get_listening_stats(user, access_token)
+
+
+@router.get("/recently-played", response_model=RecentlyPlayedResponse)
+async def get_recently_played(
+    limit: int = Query(50, ge=1, le=100),
+    user: User = Depends(get_current_user_db),
+    session: AsyncSession = Depends(get_db),
+):
+    """Get recently played tracks from local database."""
+    cache = await get_cache()
+    service = AnalyticsService(session, cache)
+    return await service.get_recently_played_history(user, limit)
 
 
 @router.post("/sync", response_model=AnalyticsSyncResponse)

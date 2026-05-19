@@ -105,3 +105,22 @@ class RollingWindowAnalytics(BaseModel):
     total_plays: int
     unique_tracks: int
     unique_artists: int
+
+
+class ListeningHistoryItem(BaseModel):
+    """Single item in recently played history."""
+
+    spotify_track_id: str
+    track_name: str
+    artist_name: str
+    album_name: Optional[str]
+    image_url: Optional[str]
+    duration_ms: Optional[int]
+    played_at: datetime
+
+
+class RecentlyPlayedResponse(BaseModel):
+    """Response for recently played tracks endpoint."""
+
+    items: list[ListeningHistoryItem]
+    cursor: Optional[str] = None

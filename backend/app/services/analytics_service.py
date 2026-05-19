@@ -9,7 +9,9 @@ from app.core.constants import CACHE_TTL_USER_TOP_TRACKS
 from app.models import ListeningHistory, User, UserProfile, UserTopArtist, UserTopTrack
 from app.schemas.analytics import (
     ArtistResponse,
+    ListeningHistoryItem,
     ListeningStatsResponse,
+    RecentlyPlayedResponse,
     RollingWindowAnalytics,
     RollingWindowArtist,
     RollingWindowGenre,
@@ -397,3 +399,30 @@ class AnalyticsService:
         # Cache for 1 hour
         await self.cache.set_json(cache_key, result.model_dump(mode="json"), 3600)
         return result
+
+    async def get_recently_played_history(
+        self, user: User, limit: int = 50
+    ) -> RecentlyPlayedResponse:
+        """Get recently played tracks from the local database."""
+        result = await self.session.execute(
+            select(ListeningHistory)
+            .where(ListeningHistory.user_id == user.id)
+            .order_by(ListeningHistory.played_at.desc())
+            .limit(limit)
+        )
+
+        items = []
+        for record in result.scalars().all():
+            items.append(
+                ListeningHistoryItem(
+                    spotify_track_id=record.spotify_track_id,
+                    track_name=record.track_name,
+                    artist_name=record.artist_name,
+                    album_name=record.album_name,
+                    image_url=record.image_url,
+                    duration_ms=record.duration_ms,
+                    played_at=record.played_at,
+                )
+            )
+
+        return RecentlyPlayedResponse(items=items, cursor=None)
