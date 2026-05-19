@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     API_BASE_URL: str = "http://127.0.0.1:8000"
     FRONTEND_URL: str = "http://127.0.0.1:3000"
 
+    # oauth redirect
+    ALLOWED_REDIRECT_URIS: str = "http://localhost:3000,http://127.0.0.1:3000"
+    FRONTEND_REDIRECT_URL: str = "http://localhost:3000/dashboard"
+
     # database
 
     DATABASE_URL: str
@@ -74,6 +78,18 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return v.strip()
         return v
+
+    def get_allowed_redirect_uris(self) -> set[str]:
+        """parse comma-separated allowed redirect uris into a set"""
+        return {uri.strip() for uri in self.ALLOWED_REDIRECT_URIS.split(",") if uri.strip()}
+
+    def is_redirect_uri_allowed(self, redirect_uri: str) -> bool:
+        """check if redirect uri is allowed based on prefix matching against allowed bases"""
+        allowed_bases = self.get_allowed_redirect_uris()
+        for base in allowed_bases:
+            if redirect_uri.startswith(base):
+                return True
+        return False
 
     @model_validator(mode="after")
     def merge_postgres_connection_fields(self) -> "Settings":

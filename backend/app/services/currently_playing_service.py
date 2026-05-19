@@ -84,7 +84,9 @@ class CurrentlyPlayingService:
                         if track_data.spotify_track_id != last_track_id:
                             await self._persist_history(user_id, track_data)
                             last_track_id = track_data.spotify_track_id
-                            logger.info(f"user {spotify_id} started playing: {track_data.track_name}")
+                            logger.info(
+                                f"user {spotify_id} started playing: {track_data.track_name}"
+                            )
 
                         # broadcast to authorized friends
                         await self._broadcast_update(user_id, track_data)
@@ -214,7 +216,9 @@ class CurrentlyPlayingService:
             select(UserProfile).where(UserProfile.user_id == user_id)
         )
         profile = profile_result.scalar_one_or_none()
-        visibility = profile.activity_visibility if profile else ActivityVisibility.FRIENDS_ONLY.value
+        visibility = (
+            profile.activity_visibility if profile else ActivityVisibility.FRIENDS_ONLY.value
+        )
 
         if visibility == ActivityVisibility.PRIVATE.value:
             return
@@ -246,8 +250,7 @@ class CurrentlyPlayingService:
             connected_ids = [user_id]  # Always send to self
             friend_ids = await self._get_friend_ids(user_id)
             connected_friend_ids = [
-                fid for fid in friend_ids
-                if self.connection_manager.is_connected(fid)
+                fid for fid in friend_ids if self.connection_manager.is_connected(fid)
             ]
             connected_ids.extend(connected_friend_ids)
             if connected_ids:
@@ -345,6 +348,8 @@ class CurrentlyPlayingService:
         from sqlalchemy import func
 
         result = await self.session.execute(
-            select(func.count()).select_from(UserActivityHistory).where(UserActivityHistory.user_id == user_id)
+            select(func.count())
+            .select_from(UserActivityHistory)
+            .where(UserActivityHistory.user_id == user_id)
         )
         return result.scalar() or 0

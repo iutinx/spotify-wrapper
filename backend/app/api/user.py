@@ -51,7 +51,9 @@ async def get_user_profile(
 @router.get("/me/activity-history", response_model=ActivityHistoryResponse)
 async def get_activity_history(
     limit: int = Query(50, ge=1, le=100, description="Number of items to return (max 100)"),
-    cursor: Optional[str] = Query(None, description="Cursor for pagination (base64-encoded timestamp)"),
+    cursor: Optional[str] = Query(
+        None, description="Cursor for pagination (base64-encoded timestamp)"
+    ),
     user: User = Depends(get_current_user_db),
     session: AsyncSession = Depends(get_db),
 ):

@@ -1,10 +1,11 @@
 import logging
 from contextlib import asynccontextmanager
+from urllib.parse import urlencode
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import ValidationError
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
@@ -158,12 +159,12 @@ async def pydantic_validation_exception_handler(request: Request, exc: Validatio
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
-    """Handle unhandled exceptions with RFC 7807 format."""
+    """handle unhandled exceptions with RFC 7807 format."""
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
     return create_internal_error(request, str(exc) if str(exc) else "An unexpected error occurred")
 
 
-# Custom rate limit handler with RFC 7807 format
+# custom rate limit handler with RFC 7807 format
 async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
     """Handle rate limit exceeded with RFC 7807 format."""
     return create_rate_limit_error(request, str(exc))
@@ -177,7 +178,8 @@ app.add_middleware(
     allow_origins=[
         settings.FRONTEND_URL,
         "https://127.0.0.1:5000",
-        "http://127.0.0.1:3000",
+        "http://localhost:5000" "http://127.0.0.1:3000",
+        "http://localhost:3000",
         "http://127.0.0.1:5173",
     ],
     allow_credentials=True,
@@ -210,9 +212,14 @@ CALLBACK_HTML = """<!DOCTYPE html>
 
 @app.get("/auth/callback")
 async def auth_callback(code: str, state: str):
-    state_valid = await OAuthStateStore.verify_state(state)
+    state_valid, redirect_uri = await OAuthStateStore.verify_state(state)
     if not state_valid:
-        return HTMLResponse("<h1>Invalid state parameter</h1>", status_code=400)
+        logger.warning("invalid oauth state received")
+        return HTMLResponse("<h1>invalid state parameter</h1>", status_code=400)
+
+    if not redirect_uri:
+        redirect_uri = settings.FRONTEND_REDIRECT_URL
+        logger.info(f"no redirect_uri in state, using default: {redirect_uri}")
 
     try:
         token_data = await spotify_service.get_access_token(code)
@@ -241,17 +248,28 @@ async def auth_callback(code: str, state: str):
                 user_id=str(user.id),
             )
 
-        return HTMLResponse(
-            CALLBACK_HTML.format(
-                access_token=access_token,
-                refresh_token=refresh_token,
-                expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            )
+        fragment_params = urlencode(
+            {
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            }
         )
+        redirect_url = f"{redirect_uri}#{fragment_params}"
+        logger.info(f"user authenticated, redirecting to: {redirect_uri}")
+        return RedirectResponse(url=redirect_url, status_code=302)
 
     except Exception as e:
-        logger.error(f"OAuth callback failed: {e}")
-        return HTMLResponse(f"<h1>Authentication failed</h1><p>{e}</p>", status_code=400)
+        logger.error(f"oauth callback failed: {e}")
+        error_params = urlencode(
+            {
+                "error": "authentication_failed",
+                "error_description": str(e),
+            }
+        )
+        separator = "&" if "?" in redirect_uri else "?"
+        redirect_url = f"{redirect_uri}{separator}{error_params}"
+        return RedirectResponse(url=redirect_url, status_code=302)
 
 
 @app.get("/health")

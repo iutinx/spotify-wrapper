@@ -234,7 +234,9 @@ async def get_notifications(
     """
     cache = await get_cache()
     service = SocialService(session, cache)
-    notifications, next_cursor = await service.get_notifications(user.id, unread_only, limit, cursor)
+    notifications, next_cursor = await service.get_notifications(
+        user.id, unread_only, limit, cursor
+    )
 
     result = []
     for n in notifications:

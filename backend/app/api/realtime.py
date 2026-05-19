@@ -42,10 +42,12 @@ async def realtime_websocket(websocket: WebSocket):
         # wait for auth message
         auth_message = await websocket.receive_json()
         if auth_message.get("type") != "auth":
-            await websocket.send_json({
-                "type": "error",
-                "payload": {"message": "authentication required. send auth message first"},
-            })
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "payload": {"message": "authentication required. send auth message first"},
+                }
+            )
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
 
@@ -55,10 +57,12 @@ async def realtime_websocket(websocket: WebSocket):
             token_data = verify_token(token)
             user_spotify_id = token_data.spotify_id
         except Exception:
-            await websocket.send_json({
-                "type": "error",
-                "payload": {"message": "invalid token"},
-            })
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "payload": {"message": "invalid token"},
+                }
+            )
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
 
@@ -66,10 +70,12 @@ async def realtime_websocket(websocket: WebSocket):
         async with AsyncSessionLocal() as session:
             user = await user_service.get_user_by_spotify_id(session, user_spotify_id)
             if not user:
-                await websocket.send_json({
-                    "type": "error",
-                    "payload": {"message": "user not found"},
-                })
+                await websocket.send_json(
+                    {
+                        "type": "error",
+                        "payload": {"message": "user not found"},
+                    }
+                )
                 await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
                 return
 
@@ -79,13 +85,15 @@ async def realtime_websocket(websocket: WebSocket):
             await connection_manager.connect(websocket, user_id)
 
             # send confirmation
-            await websocket.send_json({
-                "type": "connected",
-                "payload": {
-                    "user_id": str(user_id),
-                    "message": "connected to real-time updates",
-                },
-            })
+            await websocket.send_json(
+                {
+                    "type": "connected",
+                    "payload": {
+                        "user_id": str(user_id),
+                        "message": "connected to real-time updates",
+                    },
+                }
+            )
 
             # start polling for currently playing
             service = CurrentlyPlayingService(session, None, connection_manager)
@@ -99,10 +107,12 @@ async def realtime_websocket(websocket: WebSocket):
                 if msg_type == "subscribe_friends":
                     # client wants to subscribe to friends' updates
                     # this happens automatically via privacy settings
-                    await websocket.send_json({
-                        "type": "info",
-                        "payload": {"message": "subscribed to friends' activity updates"},
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "info",
+                            "payload": {"message": "subscribed to friends' activity updates"},
+                        }
+                    )
 
                 elif msg_type == "ping":
                     await websocket.send_json({"type": "pong"})

@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,10 +29,19 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/spotify-login")
-async def spotify_login():
-    state = await OAuthStateStore.create_state()
+async def spotify_login(redirect_uri: str = Query(default=None)):
+    target_uri = redirect_uri or settings.FRONTEND_REDIRECT_URL
+
+    if not settings.is_redirect_uri_allowed(target_uri):
+        logger.warning(f"redirect uri not allowed: {target_uri}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"redirect_uri '{target_uri}' is not in the allowed list",
+        )
+
+    state = await OAuthStateStore.create_state(target_uri)
     auth_url = spotify_service.get_auth_url(state)
-    logger.info("OAuth flow initiated")
+    logger.info(f"oauth flow initiated with redirect_uri: {target_uri}")
     return RedirectResponse(url=auth_url)
 
 
@@ -41,12 +50,12 @@ async def spotify_callback(
     request: SpotifyLoginRequest,
     session: AsyncSession = Depends(get_db),
 ):
-    state_valid = await OAuthStateStore.verify_state(request.state)
+    state_valid, _ = await OAuthStateStore.verify_state(request.state)
     if not state_valid:
-        logger.warning("Invalid OAuth state received")
+        logger.warning("invalid oauth state received")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid state parameter",
+            detail="invalid state parameter",
         )
 
     try:
@@ -75,7 +84,7 @@ async def spotify_callback(
             user_id=str(user.id),
         )
 
-        logger.info(f"User authenticated: {user.spotify_id}")
+        logger.info(f"user authenticated: {user.spotify_id}")
 
         return TokenResponse(
             access_token=access_token,
@@ -84,10 +93,10 @@ async def spotify_callback(
         )
 
     except Exception as e:
-        logger.error(f"OAuth callback failed: {e}")
+        logger.error(f"oauth callback failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to authenticate with Spotify",
+            detail="failed to authenticate with spotify",
         )
 
 
@@ -111,7 +120,7 @@ async def refresh_access_token(
             user_id=str(user.id),
         )
 
-        logger.info(f"Token refreshed for user: {user.spotify_id}")
+        logger.info(f"token refreshed for user: {user.spotify_id}")
 
         return TokenResponse(
             access_token=access_token,
@@ -122,14 +131,14 @@ async def refresh_access_token(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Token refresh failed: {e}")
+        logger.error(f"token refresh failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token",
+            detail="invalid refresh token",
         )
 
 
 @router.post("/logout", response_model=LogoutResponse)
 async def logout(current_user: TokenData = Depends(get_current_user)):
-    logger.info(f"User logged out: {current_user.spotify_id}")
-    return LogoutResponse(message="Logged out successfully")
+    logger.info(f"user logged out: {current_user.spotify_id}")
+    return LogoutResponse(message="logged out successfully")

@@ -32,9 +32,13 @@ class ErrorResponse(BaseModel):
     detail: str = Field(..., description="Detailed explanation of the error")
     instance: str = Field(..., description="Request path that caused the error")
     code: str = Field(..., description="Machine-readable error code (stable across API versions)")
-    docs_url: Optional[str] = Field(None, description="Link to documentation for resolving this error")
+    docs_url: Optional[str] = Field(
+        None, description="Link to documentation for resolving this error"
+    )
     request_id: Optional[str] = Field(None, description="Request ID for support debugging")
-    field_errors: Optional[list[FieldError]] = Field(None, description="Field-level validation errors")
+    field_errors: Optional[list[FieldError]] = Field(
+        None, description="Field-level validation errors"
+    )
 
     class Config:
         json_schema_extra = {

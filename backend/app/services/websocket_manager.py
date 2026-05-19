@@ -20,13 +20,17 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket, user_id: UUID) -> None:
         """register user connection (websocket already accepted by endpoint)"""
         self.active_connections[user_id] = websocket
-        logger.info(f"websocket connected: user {user_id}, total connections: {len(self.active_connections)}")
+        logger.info(
+            f"websocket connected: user {user_id}, total connections: {len(self.active_connections)}"
+        )
 
     def disconnect(self, user_id: UUID) -> None:
         """remove user from active connections"""
         if user_id in self.active_connections:
             del self.active_connections[user_id]
-            logger.info(f"websocket disconnected: user {user_id}, total connections: {len(self.active_connections)}")
+            logger.info(
+                f"websocket disconnected: user {user_id}, total connections: {len(self.active_connections)}"
+            )
 
     async def send_to_user(self, user_id: UUID, message: dict) -> None:
         """send message to a specific user"""
