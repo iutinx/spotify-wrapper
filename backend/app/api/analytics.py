@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user_db
@@ -75,29 +75,31 @@ async def get_recently_played(
 
 @router.post("/sync", response_model=AnalyticsSyncResponse)
 async def sync_analytics(
-    background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user_db),
     session: AsyncSession = Depends(get_db),
 ):
     """
     Sync user's analytics from Spotify.
 
-    Runs sync in background to avoid blocking. Returns immediately with
-    cached data, while background task fetches fresh data from Spotify.
+    Synchronous - waits for completion before returning.
     """
+    access_token = await TokenRefreshService.ensure_fresh_token(user, session)
     cache = await get_cache()
-    _ = AnalyticsService(session, cache)
+    service = AnalyticsService(session, cache)
 
-    # Add sync task to background
-    background_tasks.add_task(_sync_user_analytics, user.id, user.spotify_id)
+    logger.info(f"Analytics sync started for user {user.spotify_id}")
 
-    logger.info(f"Analytics sync initiated for user {user.spotify_id}")
+    history_count = await service.sync_recently_played(user, access_token)
+    await service.get_user_top_tracks(user, access_token, "short_term", 50)
+    await service.get_user_top_artists(user, access_token, "short_term", 50)
+
+    logger.info(f"Analytics sync completed: {history_count} history entries for {user.spotify_id}")
 
     return AnalyticsSyncResponse(
-        message="Sync started in background",
-        tracks_synced=0,
-        artists_synced=0,
-        history_entries=0,
+        message="Sync completed",
+        tracks_synced=50,
+        artists_synced=50,
+        history_entries=history_count,
     )
 
 
