@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
-import { Check, Globe, Users, Lock } from "lucide-react";
+import { Check, Globe, Users, Lock, LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 type ActivityPrivacy = "public" | "friends_only" | "private";
 
@@ -33,7 +34,8 @@ const privacyOptions: { value: ActivityPrivacy; label: string; description: stri
 ];
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const router = useRouter();
   const [currentPrivacy, setCurrentPrivacy] = useState<ActivityPrivacy>("public");
 
   const updatePrivacyMutation = useMutation({
@@ -47,6 +49,22 @@ export default function SettingsPage() {
       // Could add toast notification here
     },
   });
+
+  const disconnectMutation = useMutation({
+    mutationFn: async () => {
+      await apiClient.post("/api/auth/logout");
+    },
+    onSuccess: () => {
+      logout();
+      router.push("/login");
+    },
+  });
+
+  const handleDisconnect = () => {
+    if (confirm("Are you sure you want to disconnect Spotify? You will be logged out and need to reconnect to use the app.")) {
+      disconnectMutation.mutate();
+    }
+  };
 
   const handlePrivacyChange = (privacy: ActivityPrivacy) => {
     setCurrentPrivacy(privacy);
@@ -140,8 +158,14 @@ export default function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button variant="destructive" size="sm">
-            Disconnect Spotify
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleDisconnect}
+            disabled={disconnectMutation.isPending}
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            {disconnectMutation.isPending ? "Disconnecting..." : "Disconnect Spotify"}
           </Button>
         </CardContent>
       </Card>
