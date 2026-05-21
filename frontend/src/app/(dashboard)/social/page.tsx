@@ -8,15 +8,18 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
-import type { User } from "@/types";
+import type { User, MusicMatch } from "@/types";
 import { Search, UserPlus, Trophy } from "lucide-react";
+import { FindFriendsSheet } from "@/components/social/find-friends-sheet";
+import { FriendRequestsList } from "@/components/social/friend-requests-list";
+import { MatchDetailSheet } from "@/components/social/match-detail";
 
 interface Friend {
   id: string;
-  display_name: string;
-  profile_image_url: string | null;
-  is_online: boolean;
-  music_match_percentage: number;
+  requester?: User;
+  receiver?: User;
+  status: string;
+  created_at: string;
 }
 
 interface LeaderboardEntry {
@@ -27,12 +30,20 @@ interface LeaderboardEntry {
 
 export default function SocialPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [findFriendsOpen, setFindFriendsOpen] = useState(false);
+  const [selectedMatchUserId, setSelectedMatchUserId] = useState<string | null>(null);
+  const [selectedMatchUserName, setSelectedMatchUserName] = useState("");
 
   const { data: friends, isLoading: friendsLoading } = useQuery({
     queryKey: ["friends"],
     queryFn: async () => {
-      const response = await apiClient.get<{ friends: Friend[] }>("/api/social/friends");
-      return response.data.friends || [];
+      try {
+        const response = await apiClient.get<{ items: Friend[] }>("/api/social/friends");
+        return response.data.items || [];
+      } catch (error) {
+        console.error("Failed to fetch friends:", error);
+        return [];
+      }
     },
   });
 
@@ -44,6 +55,44 @@ export default function SocialPage() {
     },
   });
 
+  const { data: musicMatches } = useQuery({
+    queryKey: ["music-matches-all"],
+    queryFn: async () => {
+      if (!friends || friends.length === 0) return new Map<string, number>();
+      const matches = new Map<string, number>();
+      await Promise.allSettled(
+        friends.map(async (friend) => {
+          const friendUser = friend.requester || friend.receiver;
+          if (!friendUser) return;
+          try {
+            const response = await apiClient.get<MusicMatch>(`/api/social/match/${friendUser.id}`);
+            matches.set(friendUser.id, response.data.match_percentage);
+          } catch (error) {
+            console.error(`Failed to fetch music match for ${friendUser.id}:`, error);
+            matches.set(friendUser.id, 0);
+          }
+        })
+      );
+      return matches;
+    },
+    enabled: !!friends && friends.length > 0,
+  });
+
+  const { data: selectedMatch } = useQuery({
+    queryKey: ["music-match", selectedMatchUserId],
+    queryFn: async () => {
+      if (!selectedMatchUserId) return null;
+      const response = await apiClient.get<MusicMatch>(`/api/social/match/${selectedMatchUserId}`);
+      return response.data;
+    },
+    enabled: !!selectedMatchUserId,
+  });
+
+  const handleViewMatch = (friendId: string, friendName: string) => {
+    setSelectedMatchUserId(friendId);
+    setSelectedMatchUserName(friendName);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -52,6 +101,8 @@ export default function SocialPage() {
           <p className="text-muted-foreground text-sm mt-1">Connect with friends and see your ranking</p>
         </div>
       </div>
+
+      <FriendRequestsList onFriendRequestAction={() => {}} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="bg-card border-border">
@@ -89,7 +140,7 @@ export default function SocialPage() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <span className="text-sm font-bold">{entry.user.display_name.charAt(0)}</span>
+                        <span className="text-sm font-bold">{entry.user.display_name?.charAt(0) || "U"}</span>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -98,7 +149,7 @@ export default function SocialPage() {
                       </p>
                     </div>
                     <span className="text-xs text-muted-foreground font-mono">
-                      {entry.total_plays.toLocaleString()} plays
+                      {(entry.total_plays || 0).toLocaleString()} plays
                     </span>
                   </div>
                 ))}
@@ -116,7 +167,7 @@ export default function SocialPage() {
                 <CardTitle className="text-lg">Friends</CardTitle>
                 <CardDescription>Your connected friends</CardDescription>
               </div>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => setFindFriendsOpen(true)}>
                 <UserPlus className="w-4 h-4 mr-2" />
                 Find Friends
               </Button>
@@ -142,49 +193,60 @@ export default function SocialPage() {
             ) : friends?.length ? (
               <div className="space-y-2">
                 {friends
-                  .filter((f) =>
-                    f.display_name.toLowerCase().includes(searchQuery.toLowerCase())
-                  )
-                  .map((friend) => (
-                    <div
-                      key={friend.id}
-                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="relative">
-                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-                          {friend.profile_image_url ? (
-                            <img
-                              src={friend.profile_image_url}
-                              alt={friend.display_name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <span className="text-sm font-bold">
-                              {friend.display_name.charAt(0)}
-                            </span>
-                          )}
+                  .filter((f) => {
+                    const friendUser = f.requester || f.receiver;
+                    return friendUser?.display_name?.toLowerCase().includes(searchQuery.toLowerCase());
+                  })
+                  .map((friend) => {
+                    const friendUser = friend.requester || friend.receiver;
+                    if (!friendUser) return null;
+                    const isOnline = false;
+                    const matchPercentage = musicMatches?.get(friendUser.id) || 0;
+                    return (
+                      <div
+                        key={friend.id}
+                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="relative">
+                          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                            {friendUser.profile_image_url ? (
+                              <img
+                                src={friendUser.profile_image_url}
+                                alt={friendUser.display_name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-sm font-bold">
+                                {friendUser.display_name?.charAt(0) || "U"}
+                              </span>
+                            )}
+                          </div>
+                          <span
+                            className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-card ${
+                              isOnline ? "bg-green-500" : "bg-muted"
+                            }`}
+                          />
                         </div>
-                        <span
-                          className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-card ${
-                            friend.is_online ? "bg-green-500" : "bg-muted"
-                          }`}
-                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {friendUser.display_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {isOnline ? "Online" : "Offline"}
+                          </p>
+                        </div>
+                        {matchPercentage > 0 && (
+                          <Badge
+                            variant="outline"
+                            className="text-xs cursor-pointer hover:bg-primary/10 hover:text-primary"
+                            onClick={() => handleViewMatch(friendUser.id, friendUser.display_name || "")}
+                          >
+                            {matchPercentage}% match
+                          </Badge>
+                        )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {friend.display_name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {friend.is_online ? "Online" : "Offline"}
-                        </p>
-                      </div>
-                      {friend.music_match_percentage > 0 && (
-                        <Badge variant="outline" className="text-xs">
-                          {friend.music_match_percentage}% match
-                        </Badge>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
               </div>
             ) : (
               <p className="text-muted-foreground text-center py-8">No friends yet</p>
@@ -192,6 +254,19 @@ export default function SocialPage() {
           </CardContent>
         </Card>
       </div>
+
+      <FindFriendsSheet open={findFriendsOpen} onOpenChange={setFindFriendsOpen} />
+      <MatchDetailSheet
+        open={!!selectedMatchUserId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedMatchUserId(null);
+            setSelectedMatchUserName("");
+          }
+        }}
+        match={selectedMatch || null}
+        userName={selectedMatchUserName}
+      />
     </div>
   );
 }

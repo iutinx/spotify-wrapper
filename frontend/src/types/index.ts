@@ -171,3 +171,44 @@ export interface ActivityHistoryEntry {
 }
 
 export type ActivityPrivacy = "public" | "friends_only" | "private";
+
+export interface SharedTrack {
+  spotify_track_id: string;
+  track_name: string;
+  artist_name: string;
+  image_url: string | null;
+}
+
+export interface SharedArtist {
+  spotify_artist_id: string;
+  artist_name: string;
+  genres: string[];
+  image_url: string | null;
+}
+
+export interface MatchBreakdown {
+  tracks_score: number;
+  artists_score: number;
+  genres_score: number;
+  shared_tracks_count: number;
+  shared_artists_count: number;
+  shared_genres_count: number;
+  top_shared_tracks: SharedTrack[];
+  top_shared_artists: SharedArtist[];
+  top_shared_genres: string[];
+}
+
+export interface MusicMatch {
+  user_id: string;
+  match_percentage: number;
+  breakdown: MatchBreakdown;
+  explanation: string;
+}
+
+export interface FriendshipResponse {
+  id: string;
+  status: string;
+  created_at: string;
+  requester?: User;
+  receiver?: User;
+}
