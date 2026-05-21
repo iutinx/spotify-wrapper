@@ -99,7 +99,7 @@ export function useWebSocket() {
           }, delay);
         }
       };
-    } catch (e) {
+    } catch {
       setError("Failed to connect to WebSocket");
       setIsLoading(false);
     }
@@ -118,7 +118,6 @@ export function useWebSocket() {
     setIsConnected(false);
   }, []);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     connect();
     return () => disconnect();
