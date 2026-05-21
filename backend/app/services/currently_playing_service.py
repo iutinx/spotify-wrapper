@@ -60,6 +60,8 @@ class CurrentlyPlayingService:
     async def _poll_loop(self, user_id: UUID, spotify_id: str) -> None:
         """main polling loop - fetches currently playing and broadcasts updates"""
         last_track_id: Optional[str] = None
+        consecutive_errors = 0
+        max_consecutive_errors = 10
 
         try:
             while True:
@@ -96,8 +98,26 @@ class CurrentlyPlayingService:
                         await self._clear_activity(user_id)
                         last_track_id = None
 
+                    consecutive_errors = 0  # Reset on success
+
+                except ValueError as e:
+                    # Token refresh failed - log once and stop polling
+                    logger.error(f"token refresh failed for user {spotify_id}: {e}")
+                    consecutive_errors += 1
+                    if consecutive_errors >= max_consecutive_errors:
+                        logger.warning(f"stopping polling for user {spotify_id} after {max_consecutive_errors} consecutive errors")
+                        break
+                    await asyncio.sleep(self.POLL_INTERVAL_SECONDS)
+                    
                 except Exception as e:
-                    logger.error(f"error in polling loop for user {spotify_id}: {e}")
+                    # Other errors - log with rate limiting
+                    consecutive_errors += 1
+                    if consecutive_errors % 5 == 1:  # Log every 5th error
+                        logger.error(f"error in polling loop for user {spotify_id} (attempt {consecutive_errors}): {e}")
+                    if consecutive_errors >= max_consecutive_errors:
+                        logger.warning(f"stopping polling for user {spotify_id} after {max_consecutive_errors} consecutive errors")
+                        break
+                    await asyncio.sleep(self.POLL_INTERVAL_SECONDS)
 
                 await asyncio.sleep(self.POLL_INTERVAL_SECONDS)
 
