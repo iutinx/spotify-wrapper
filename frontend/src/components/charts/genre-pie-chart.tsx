@@ -10,6 +10,7 @@ import {
   Legend,
 } from "recharts";
 import { cn } from "@/lib/utils";
+import { getChartColors, getRechartsTooltipStyle, getAxisTickColor } from "@/lib/theme";
 
 interface GenrePieChartProps {
   data: {
@@ -19,9 +20,11 @@ interface GenrePieChartProps {
   className?: string;
 }
 
-const COLORS = ["#d97706", "#f59e0b", "#fbbf24", "#fcd34d", "#fb923c", "#fb7185"];
-
 export function GenrePieChart({ data, className }: GenrePieChartProps) {
+  const chartColors = getChartColors();
+  const tooltipStyle = getRechartsTooltipStyle();
+  const tickColor = getAxisTickColor();
+
   if (!data || data.length === 0) {
     return (
       <div className={cn("flex items-center justify-center h-64 text-muted-foreground", className)}>
@@ -44,20 +47,12 @@ export function GenrePieChart({ data, className }: GenrePieChartProps) {
             dataKey="value"
           >
             {data.slice(0, 6).map((_, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
             ))}
           </Pie>
-          <Tooltip
-            contentStyle={{
-              backgroundColor: "#171717",
-              border: "1px solid #2a2a2a",
-              borderRadius: "8px",
-              color: "#faf9f7",
-            }}
-            formatter={(value) => [`${value} plays`]}
-          />
+          <Tooltip contentStyle={tooltipStyle} />
           <Legend
-            formatter={(value) => <span style={{ color: "#a8a29e", fontSize: "12px" }}>{value}</span>}
+            formatter={(value) => <span style={{ color: tickColor, fontSize: "12px" }}>{value}</span>}
           />
         </PieChart>
       </ResponsiveContainer>

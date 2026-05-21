@@ -11,6 +11,7 @@ import {
   Cell,
 } from "recharts";
 import { cn } from "@/lib/utils";
+import { getChartColors, getRechartsTooltipStyle, getAxisTickColor } from "@/lib/theme";
 
 interface TrackBarChartProps {
   data: {
@@ -21,9 +22,11 @@ interface TrackBarChartProps {
   className?: string;
 }
 
-const COLORS = ["#d97706", "#f59e0b", "#fbbf24", "#fcd34d", "#fb923c"];
-
 export function TrackBarChart({ data, className }: TrackBarChartProps) {
+  const chartColors = getChartColors();
+  const tooltipStyle = getRechartsTooltipStyle();
+  const tickColor = getAxisTickColor();
+
   if (!data || data.length === 0) {
     return (
       <div className={cn("flex items-center justify-center h-64 text-muted-foreground", className)}>
@@ -40,21 +43,16 @@ export function TrackBarChart({ data, className }: TrackBarChartProps) {
           layout="vertical"
           margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
         >
-          <XAxis type="number" tick={{ fill: "#a8a29e", fontSize: 12 }} />
+          <XAxis type="number" tick={{ fill: tickColor, fontSize: 12 }} />
           <YAxis
             type="category"
             dataKey="name"
-            tick={{ fill: "#faf9f7", fontSize: 12 }}
+            tick={{ fill: tickColor, fontSize: 12 }}
             width={120}
             tickFormatter={(value) => value.length > 15 ? value.substring(0, 15) + "..." : value}
           />
           <Tooltip
-            contentStyle={{
-              backgroundColor: "#171717",
-              border: "1px solid #2a2a2a",
-              borderRadius: "8px",
-              color: "#faf9f7",
-            }}
+            contentStyle={tooltipStyle}
             formatter={(value, name, props) => [
               `${value} plays`,
               props.payload.artist
@@ -63,7 +61,7 @@ export function TrackBarChart({ data, className }: TrackBarChartProps) {
           />
           <Bar dataKey="plays" radius={[0, 4, 4, 0]}>
             {data.map((_, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
             ))}
           </Bar>
         </BarChart>
