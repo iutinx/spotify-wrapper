@@ -2,11 +2,12 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user_db
 from app.database import get_db
-from app.models.users import User
+from app.models.users import User, UserProfile
 from app.schemas.realtime import (
     ActivityHistoryEntry,
     ActivityHistoryResponse,
@@ -25,11 +26,19 @@ logger = logging.getLogger(__name__)
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_profile(
     user: User = Depends(get_current_user_db),
+    session: AsyncSession = Depends(get_db),
 ):
     """
     get current authenticated user's profile
     """
-    return UserResponse(**user.__dict__)
+    profile_result = await session.execute(
+        select(UserProfile).where(UserProfile.user_id == user.id)
+    )
+    profile = profile_result.scalar_one_or_none()
+    response = UserResponse(**user.__dict__)
+    if profile:
+        response.profile = UserProfileResponse(**profile.__dict__)
+    return response
 
 
 @router.get("/{user_id}", response_model=UserResponse)
@@ -46,6 +55,7 @@ async def get_user_profile(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
+    return UserResponse(**user.__dict__)
 
 
 @router.get("/me/activity-history", response_model=ActivityHistoryResponse)
@@ -133,8 +143,6 @@ async def get_currently_playing(
         duration_ms=activity.duration_ms,
     )
 
-    return UserResponse(**user.__dict__)
-
 
 @router.put("/{user_id}/profile", response_model=UserProfileResponse)
 async def update_user_profile(
@@ -185,7 +193,7 @@ async def update_activity_privacy(
 
     # validate visibility value
     valid_values = [v.value for v in ActivityVisibility]
-    if request.visibility not in valid_values:
+    if request.activity_privacy not in valid_values:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"invalid visibility. must be one of: {', '.join(valid_values)}",
@@ -195,9 +203,9 @@ async def update_activity_privacy(
         profile = await user_service.update_user_profile(
             session,
             str(user.id),
-            UserProfileRequest(activity_visibility=request.visibility),
+            UserProfileRequest(activity_visibility=request.activity_privacy),
         )
-        logger.info(f"updated activity privacy for user {user.id}: {request.visibility}")
+        logger.info(f"updated activity privacy for user {user.id}: {request.activity_privacy}")
         return ActivityPrivacyResponse(visibility=profile.activity_visibility)
 
     except ValueError as e:

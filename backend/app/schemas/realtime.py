@@ -31,7 +31,7 @@ class UserActivityUpdate(BaseModel):
 class ActivityPrivacyRequest(BaseModel):
     """request to update activity privacy setting"""
 
-    visibility: str  # public, friends_only, private
+    activity_privacy: str  # public, friends_only, private
 
 
 class ActivityPrivacyResponse(BaseModel):
