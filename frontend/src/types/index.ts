@@ -160,7 +160,8 @@ export interface FriendRequest {
 export interface LeaderboardEntry {
   rank: number;
   user: User;
-  total_plays: number;
+  total_hours_listened: number;
+  listening_streak: number;
 }
 
 export interface ActivityHistoryEntry {

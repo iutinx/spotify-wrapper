@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import type { User, MusicMatch } from "@/types";
+import { useAuth } from "@/hooks/useAuth";
 import { Search, UserPlus, Trophy } from "lucide-react";
 import { FindFriendsSheet } from "@/components/social/find-friends-sheet";
 import { FriendRequestsList } from "@/components/social/friend-requests-list";
@@ -25,10 +26,16 @@ interface Friend {
 interface LeaderboardEntry {
   rank: number;
   user: User;
-  total_plays: number;
+  total_hours_listened: number;
+  listening_streak: number;
 }
 
 export default function SocialPage() {
+  const { user: currentUser } = useAuth();
+
+  const getFriendUser = (friend: Friend) =>
+    friend.requester?.id === currentUser?.id ? friend.receiver : friend.requester;
+
   const [searchQuery, setSearchQuery] = useState("");
   const [findFriendsOpen, setFindFriendsOpen] = useState(false);
   const [selectedMatchUserId, setSelectedMatchUserId] = useState<string | null>(null);
@@ -62,7 +69,7 @@ export default function SocialPage() {
       const matches = new Map<string, number>();
       await Promise.allSettled(
         friends.map(async (friend) => {
-          const friendUser = friend.requester || friend.receiver;
+          const friendUser = getFriendUser(friend);
           if (!friendUser) return;
           try {
             const response = await apiClient.get<MusicMatch>(`/api/social/match/${friendUser.id}`);
@@ -148,9 +155,14 @@ export default function SocialPage() {
                         {entry.user.display_name}
                       </p>
                     </div>
-                    <span className="text-xs text-muted-foreground font-mono">
-                      {(entry.total_plays || 0).toLocaleString()} plays
-                    </span>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground font-mono">
+                        {(entry.total_hours_listened || 0).toLocaleString()} hrs
+                      </p>
+                      <p className="text-xs text-muted-foreground font-mono">
+                        {entry.listening_streak || 0}d streak
+                      </p>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -194,11 +206,11 @@ export default function SocialPage() {
               <div className="space-y-2">
                 {friends
                   .filter((f) => {
-                    const friendUser = f.requester || f.receiver;
+                    const friendUser = getFriendUser(f);
                     return friendUser?.display_name?.toLowerCase().includes(searchQuery.toLowerCase());
                   })
                   .map((friend) => {
-                    const friendUser = friend.requester || friend.receiver;
+                    const friendUser = getFriendUser(friend);
                     if (!friendUser) return null;
                     const isOnline = false;
                     const matchPercentage = musicMatches?.get(friendUser.id) || 0;

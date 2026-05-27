@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { Check, Globe, Users, Lock, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -37,6 +37,21 @@ export default function SettingsPage() {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [currentPrivacy, setCurrentPrivacy] = useState<ActivityPrivacy>("public");
+
+  const { data: meData } = useQuery({
+    queryKey: ["me"],
+    queryFn: async () => {
+      const response = await apiClient.get<{ profile?: { activity_visibility?: string } }>("/api/users/me");
+      return response.data;
+    },
+  });
+
+  useEffect(() => {
+    const visibility = meData?.profile?.activity_visibility;
+    if (visibility === "public" || visibility === "friends_only" || visibility === "private") {
+      setCurrentPrivacy(visibility);
+    }
+  }, [meData]);
 
   const updatePrivacyMutation = useMutation({
     mutationFn: async (privacy: ActivityPrivacy) => {
