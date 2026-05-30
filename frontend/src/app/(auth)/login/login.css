@@ -1,0 +1,357 @@
+/* Login page — same white dot-grid theme as the landing page, scoped under .resonance-login */
+
+.resonance-login {
+  --bg: #ffffff;
+  --ink: #0a0a0a;
+  --ink-soft: #5a5a5a;
+  --ink-faint: #a8a8a8;
+  --accent: #0a0a0a;
+  --hair: #ececec;
+
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  cursor: none;
+}
+.resonance-login *,
+.resonance-login *::before,
+.resonance-login *::after {
+  box-sizing: border-box;
+  cursor: none;
+}
+
+.resonance-login .shader-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.resonance-login .app {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.resonance-login .topbar,
+.resonance-login .auth-wrap,
+.resonance-login .meta {
+  position: relative;
+  z-index: 2;
+}
+.resonance-login .cursor {
+  z-index: 100;
+}
+
+/* Faint full-bleed background waveform */
+.resonance-login .wave-bg-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.resonance-login .wave-bg-wrap .wave-svg {
+  width: 100%;
+  height: 70vh;
+}
+
+/* Top bar */
+.resonance-login .topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28px 40px;
+  z-index: 5;
+}
+.resonance-login .brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-serif), serif;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  color: var(--ink);
+}
+.resonance-login .brand-mark {
+  width: 22px;
+  height: 22px;
+  background: var(--ink);
+  border-radius: 50%;
+  position: relative;
+}
+.resonance-login .brand-mark::after {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  background: var(--bg);
+  border-radius: 50%;
+}
+.resonance-login .back {
+  font-size: 13px;
+  color: var(--ink-soft);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: color 0.15s;
+}
+.resonance-login .back:hover {
+  color: var(--ink);
+}
+.resonance-login .back .arrow {
+  display: inline-block;
+  transition: transform 0.18s;
+}
+.resonance-login .back:hover .arrow {
+  transform: translateX(-3px);
+}
+
+/* Auth card centering */
+.resonance-login .auth-wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24px;
+}
+
+/* Frosted glass card */
+.resonance-login .card {
+  position: relative;
+  width: min(460px, 92vw);
+  background: rgba(255, 255, 255, 0.66);
+  backdrop-filter: blur(14px) saturate(1.1);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+  border: 1px solid var(--hair);
+  border-radius: 28px;
+  padding: 44px 44px 36px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.8) inset,
+    0 40px 90px -50px rgba(0, 0, 0, 0.35);
+  text-align: center;
+}
+
+/* Spotify logo lockup */
+.resonance-login .logo {
+  height: 44px;
+  margin: 0 auto 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.resonance-login .logo img {
+  height: 100%;
+  width: auto;
+  display: block;
+}
+
+/* Eyebrow label */
+.resonance-login .eyebrow {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 14px;
+}
+
+/* Card heading */
+.resonance-login .card h1 {
+  font-family: var(--font-serif), serif;
+  font-weight: 400;
+  font-size: 40px;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  margin: 0 0 12px;
+  color: var(--ink);
+}
+.resonance-login .card h1 em {
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+/* Subtitle */
+.resonance-login .sub {
+  font-size: 15px;
+  color: var(--ink-soft);
+  line-height: 1.55;
+  margin: 0 auto 26px;
+  max-width: 34ch;
+}
+
+/* Card waveform strip */
+.resonance-login .wave-wrap {
+  position: relative;
+  width: 100%;
+  height: 76px;
+  margin: 0 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 10px;
+}
+.resonance-login .wave-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  display: block;
+}
+
+/* Continue button */
+.resonance-login .btn {
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  width: 100%;
+  padding: 16px 24px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: none;
+}
+.resonance-login .btn-primary {
+  background: var(--ink);
+  color: var(--bg);
+}
+.resonance-login .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 34px -16px rgba(0, 0, 0, 0.6);
+}
+.resonance-login .btn-primary:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+.resonance-login .btn-primary .ic {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+.resonance-login .btn-primary .ic img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Disclaimer */
+.resonance-login .disclaimer {
+  margin: 22px auto 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink-faint);
+  max-width: 36ch;
+}
+
+/* Footer meta */
+.resonance-login .meta {
+  position: absolute;
+  bottom: 28px;
+  left: 40px;
+  right: 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  z-index: 5;
+}
+.resonance-login .meta .live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.resonance-login .meta .live .pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #21c55d;
+  box-shadow: 0 0 0 0 rgba(33, 197, 93, 0.7);
+  animation: login-pulse 2s infinite;
+}
+@keyframes login-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(33, 197, 93, 0.7); }
+  70% { box-shadow: 0 0 0 8px rgba(33, 197, 93, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(33, 197, 93, 0); }
+}
+
+/* Custom cursor */
+.resonance-login .cursor {
+  position: fixed;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  pointer-events: none;
+  z-index: 100;
+  transform: translate(-50%, -50%);
+  mix-blend-mode: difference;
+  transition: width 0.2s, height 0.2s;
+}
+.resonance-login .cursor.ring {
+  width: 44px;
+  height: 44px;
+  background: transparent;
+  border: 1px solid var(--accent);
+  opacity: 0.4;
+  transition: transform 0.25s ease-out, width 0.2s, height 0.2s;
+}
+.resonance-login .cursor.ring.hover {
+  width: 60px;
+  height: 60px;
+  opacity: 0.7;
+}
+
+/* Touch / coarse pointer: restore native cursor */
+@media (hover: none), (pointer: coarse) {
+  .resonance-login,
+  .resonance-login * {
+    cursor: auto;
+  }
+  .resonance-login .cursor {
+    display: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .resonance-login .topbar {
+    padding: 20px;
+  }
+  .resonance-login .meta {
+    left: 20px;
+    right: 20px;
+    font-size: 9px;
+  }
+  .resonance-login .card {
+    padding: 36px 28px 28px;
+  }
+  .resonance-login .card h1 {
+    font-size: 34px;
+  }
+}
