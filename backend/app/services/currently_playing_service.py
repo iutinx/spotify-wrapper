@@ -8,7 +8,13 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import ActivityVisibility
-from app.models import Friendship, User, UserActivity, UserActivityHistory, UserProfile
+from app.models import (
+    Friendship,
+    User,
+    UserActivity,
+    UserActivityHistory,
+    UserProfile,
+)
 from app.schemas.realtime import CurrentlyPlayingTrack, UserActivityUpdate
 from app.services.cache_service import CacheService
 from app.services.spotify_service import spotify_service
@@ -105,17 +111,23 @@ class CurrentlyPlayingService:
                     logger.error(f"token refresh failed for user {spotify_id}: {e}")
                     consecutive_errors += 1
                     if consecutive_errors >= max_consecutive_errors:
-                        logger.warning(f"stopping polling for user {spotify_id} after {max_consecutive_errors} consecutive errors")
+                        logger.warning(
+                            f"stopping polling for user {spotify_id} after {max_consecutive_errors} consecutive errors"
+                        )
                         break
                     await asyncio.sleep(self.POLL_INTERVAL_SECONDS)
-                    
+
                 except Exception as e:
                     # Other errors - log with rate limiting
                     consecutive_errors += 1
                     if consecutive_errors % 5 == 1:  # Log every 5th error
-                        logger.error(f"error in polling loop for user {spotify_id} (attempt {consecutive_errors}): {e}")
+                        logger.error(
+                            f"error in polling loop for user {spotify_id} (attempt {consecutive_errors}): {e}"
+                        )
                     if consecutive_errors >= max_consecutive_errors:
-                        logger.warning(f"stopping polling for user {spotify_id} after {max_consecutive_errors} consecutive errors")
+                        logger.warning(
+                            f"stopping polling for user {spotify_id} after {max_consecutive_errors} consecutive errors"
+                        )
                         break
                     await asyncio.sleep(self.POLL_INTERVAL_SECONDS)
 
@@ -198,6 +210,8 @@ class CurrentlyPlayingService:
         if not track.spotify_track_id:
             return
 
+        now = datetime.utcnow()
+
         # end previous track if exists
         prev_result = await self.session.execute(
             select(UserActivityHistory)
@@ -212,7 +226,7 @@ class CurrentlyPlayingService:
         )
         prev_entry = prev_result.scalar_one_or_none()
         if prev_entry:
-            prev_entry.ended_at = datetime.utcnow()
+            prev_entry.ended_at = now
 
         # create new entry
         entry = UserActivityHistory(
@@ -223,7 +237,7 @@ class CurrentlyPlayingService:
             album_name=track.album_name,
             image_url=track.image_url,
             duration_ms=track.duration_ms,
-            started_at=datetime.utcnow(),
+            started_at=now,
         )
         self.session.add(entry)
         await self.session.commit()

@@ -1,4 +1,5 @@
 import logging
+from datetime import timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -94,8 +95,10 @@ async def get_activity_history(
                 artist_name=item.artist_name,
                 album_name=item.album_name,
                 image_url=item.image_url,
-                started_at=item.started_at,
-                ended_at=item.ended_at,
+                started_at=item.started_at.replace(tzinfo=timezone.utc)
+                if item.started_at
+                else None,
+                ended_at=item.ended_at.replace(tzinfo=timezone.utc) if item.ended_at else None,
             )
             for item in items
         ],

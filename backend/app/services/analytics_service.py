@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -227,12 +227,14 @@ class AnalyticsService:
             )
             played_at = played_at.replace(tzinfo=None)
 
+            # deduplicate with a ±30s window to catch near-duplicate timestamps
             existing = await self.session.execute(
                 select(ListeningHistory).where(
                     and_(
                         ListeningHistory.user_id == user.id,
                         ListeningHistory.spotify_track_id == t.get("id"),
-                        ListeningHistory.played_at == played_at,
+                        ListeningHistory.played_at >= played_at - timedelta(seconds=30),
+                        ListeningHistory.played_at <= played_at + timedelta(seconds=30),
                     )
                 )
             )
@@ -408,11 +410,16 @@ class AnalyticsService:
             select(ListeningHistory)
             .where(ListeningHistory.user_id == user.id)
             .order_by(ListeningHistory.played_at.desc())
-            .limit(limit)
+            .limit(limit * 3)
         )
 
+        # deduplicate by track — keep the most recent play of each track
+        seen = set()
         items = []
         for record in result.scalars().all():
+            if record.spotify_track_id in seen:
+                continue
+            seen.add(record.spotify_track_id)
             items.append(
                 ListeningHistoryItem(
                     spotify_track_id=record.spotify_track_id,
@@ -421,8 +428,12 @@ class AnalyticsService:
                     album_name=record.album_name,
                     image_url=record.image_url,
                     duration_ms=record.duration_ms,
-                    played_at=record.played_at,
+                    played_at=record.played_at.replace(tzinfo=timezone.utc)
+                    if record.played_at
+                    else None,
                 )
             )
+            if len(items) >= limit:
+                break
 
         return RecentlyPlayedResponse(items=items, cursor=None)
