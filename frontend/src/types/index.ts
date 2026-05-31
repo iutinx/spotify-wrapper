@@ -213,3 +213,20 @@ export interface FriendshipResponse {
   requester?: User;
   receiver?: User;
 }
+
+export interface PlaylistItem {
+  spotify_playlist_id: string;
+  name: string;
+  description: string | null;
+  image_url: string | null;
+  tracks_total: number;
+  owner_display_name: string | null;
+  is_collaborative: boolean;
+  is_public: boolean;
+}
+
+export interface UserPlaylistsResponse {
+  items: PlaylistItem[];
+  total: number;
+  limit: number;
+}

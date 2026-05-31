@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
-import type { TopTracksResponse, TopArtistsResponse, RecentlyPlayedResponse, RollingWindowStats } from "@/types";
+import type { TopTracksResponse, TopArtistsResponse, RecentlyPlayedResponse, RollingWindowStats, UserPlaylistsResponse } from "@/types";
 
 export function useTopTracks(timeRange: string = "short_term") {
   return useQuery({
@@ -63,6 +63,16 @@ export function useSyncAnalytics() {
       queryClient.invalidateQueries({ queryKey: ["top-tracks"] });
       queryClient.invalidateQueries({ queryKey: ["top-artists"] });
       queryClient.invalidateQueries({ queryKey: ["recently-played"] });
+    },
+  });
+}
+
+export function useUserPlaylists() {
+  return useQuery({
+    queryKey: ["user-playlists"],
+    queryFn: async () => {
+      const response = await apiClient.get<UserPlaylistsResponse>("/api/analytics/playlists");
+      return response.data;
     },
   });
 }
