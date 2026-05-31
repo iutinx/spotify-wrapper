@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { TurntableCarousel, type TurntableTrack } from "@/components/dashboard/turntable";
 import {
   useTopTracks,
   useTopArtists,
   useRecentlyPlayed,
   useRollingWindow,
-  useSyncAnalytics,
   useUserPlaylists,
 } from "@/hooks/useAnalytics";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,7 +34,6 @@ function timeAgo(dateStr: string): string {
 export default function AnalyticsPage() {
   const [segIdx, setSegIdx] = useState(0);
   const { user } = useAuth();
-  const syncMutation = useSyncAnalytics();
 
   const timeRange = API_RANGES[segIdx];
   const rollingDays = ROLLING_DAYS[segIdx];
@@ -55,24 +53,27 @@ export default function AnalyticsPage() {
 
   const displayName = user?.display_name?.split(" ")[0] || "listener";
 
-  const recentTracks: TurntableTrack[] =
-    recentData?.items?.slice(0, 10).map((item) => ({
-      title: item.track_name,
-      artist: item.artist_name,
-      ago: timeAgo(item.played_at),
-      img: item.image_url || undefined,
-    })) ?? [
-      { title: "Slow Tide", artist: "Marrow", ago: "now" },
-      { title: "Amber Hours", artist: "Kite Season", ago: "12 min ago" },
-      { title: "Paper Streets", artist: "Lowercase", ago: "38 min ago" },
-      { title: "Glasshouse", artist: "V. Mora", ago: "1 hr ago" },
-      { title: "Northbound", artist: "Halcyon Bay", ago: "2 hr ago" },
-      { title: "Cinder", artist: "The Owls", ago: "3 hr ago" },
-      { title: "Quiet Parade", artist: "Field Notes", ago: "yesterday" },
-      { title: "Velvet Static", artist: "Mona Lin", ago: "yesterday" },
-      { title: "Driftwood", artist: "Sea Cabin", ago: "2 days ago" },
-      { title: "Last Train", artist: "Echo & Ivy", ago: "2 days ago" },
-    ];
+  const recentTracks: TurntableTrack[] = useMemo(
+    () =>
+      recentData?.items?.slice(0, 10).map((item) => ({
+        title: item.track_name,
+        artist: item.artist_name,
+        ago: timeAgo(item.played_at),
+        img: item.image_url || undefined,
+      })) ?? [
+        { title: "Slow Tide", artist: "Marrow", ago: "now" },
+        { title: "Amber Hours", artist: "Kite Season", ago: "12 min ago" },
+        { title: "Paper Streets", artist: "Lowercase", ago: "38 min ago" },
+        { title: "Glasshouse", artist: "V. Mora", ago: "1 hr ago" },
+        { title: "Northbound", artist: "Halcyon Bay", ago: "2 hr ago" },
+        { title: "Cinder", artist: "The Owls", ago: "3 hr ago" },
+        { title: "Quiet Parade", artist: "Field Notes", ago: "yesterday" },
+        { title: "Velvet Static", artist: "Mona Lin", ago: "yesterday" },
+        { title: "Driftwood", artist: "Sea Cabin", ago: "2 days ago" },
+        { title: "Last Train", artist: "Echo & Ivy", ago: "2 days ago" },
+      ],
+    [recentData?.items],
+  );
 
   const topTracks = tracksData?.tracks?.slice(0, 4) ?? [];
   const topArtists = artistsData?.artists?.slice(0, 4) ?? [];
@@ -108,6 +109,7 @@ export default function AnalyticsPage() {
             </button>
           ))}
         </div>
+
       </div>
 
       {/* hero: stats · turntable · genres */}
@@ -212,14 +214,7 @@ export default function AnalyticsPage() {
         <div className="db-card db-m-songs">
           <div className="db-card-head">
             <span className="db-lbl">Top songs</span>
-            <button
-              className="db-more"
-              onClick={() => syncMutation.mutate()}
-              title="Sync"
-              style={{ background: "none", border: "none", padding: 0 }}
-            >
-              ⋯
-            </button>
+
           </div>
           <div className="db-rows">
             {topTracks.length > 0

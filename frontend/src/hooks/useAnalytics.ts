@@ -35,6 +35,8 @@ export function useRecentlyPlayed() {
       const response = await apiClient.get<RecentlyPlayedResponse>("/api/analytics/recently-played");
       return response.data;
     },
+    staleTime: 0,
+    refetchInterval: 30_000,
   });
 }
 
