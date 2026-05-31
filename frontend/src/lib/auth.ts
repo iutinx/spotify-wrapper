@@ -28,24 +28,37 @@ export function parseTokensFromUrl(): TokenResponse | null {
   };
 }
 
+function ls(): Storage | null {
+  try {
+    if (typeof localStorage !== "undefined" && typeof localStorage.getItem === "function") {
+      return localStorage;
+    }
+  } catch {}
+  return null;
+}
+
 export function storeTokens(tokens: TokenResponse): void {
-  localStorage.setItem("access_token", tokens.access_token);
-  localStorage.setItem("refresh_token", tokens.refresh_token);
-  localStorage.setItem("token_expires_at", String(Date.now() + tokens.expires_in * 1000));
+  const store = ls();
+  if (!store) return;
+  store.setItem("access_token", tokens.access_token);
+  store.setItem("refresh_token", tokens.refresh_token);
+  store.setItem("token_expires_at", String(Date.now() + tokens.expires_in * 1000));
 }
 
 export function clearTokens(): void {
-  localStorage.removeItem("access_token");
-  localStorage.removeItem("refresh_token");
-  localStorage.removeItem("token_expires_at");
+  const store = ls();
+  if (!store) return;
+  store.removeItem("access_token");
+  store.removeItem("refresh_token");
+  store.removeItem("token_expires_at");
 }
 
 export function getAccessToken(): string | null {
-  return localStorage.getItem("access_token");
+  return ls()?.getItem("access_token") ?? null;
 }
 
 export function getRefreshToken(): string | null {
-  return localStorage.getItem("refresh_token");
+  return ls()?.getItem("refresh_token") ?? null;
 }
 
 export function isAuthenticated(): boolean {
