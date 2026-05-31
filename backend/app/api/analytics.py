@@ -14,6 +14,7 @@ from app.schemas.analytics import (
     RollingWindowRequest,
     TopArtistsResponse,
     TopTracksResponse,
+    UserPlaylistsResponse,
 )
 from app.services.analytics_service import AnalyticsService
 from app.services.cache_service import get_cache
@@ -71,6 +72,42 @@ async def get_recently_played(
     cache = await get_cache()
     service = AnalyticsService(session, cache)
     return await service.get_recently_played_history(user, limit)
+
+
+@router.get("/playlists", response_model=UserPlaylistsResponse)
+async def get_user_playlists(
+    limit: int = Query(50, ge=1, le=50),
+    user: User = Depends(get_current_user_db),
+    session: AsyncSession = Depends(get_db),
+):
+    """Get user's playlists from spotify."""
+    access_token = await TokenRefreshService.ensure_fresh_token(user, session)
+    from app.services.spotify_service import spotify_service
+
+    spotify_data = await spotify_service.get_user_playlists(access_token, limit)
+
+    items = []
+    for pl in spotify_data.get("items", []):
+        images = pl.get("images", [])
+        image_url = images[0]["url"] if images else None
+        items.append(
+            {
+                "spotify_playlist_id": pl["id"],
+                "name": pl["name"],
+                "description": pl.get("description"),
+                "image_url": image_url,
+                "tracks_total": pl.get("tracks", {}).get("total", 0),
+                "owner_display_name": pl.get("owner", {}).get("display_name"),
+                "is_collaborative": pl.get("collaborative", False),
+                "is_public": pl.get("public", False),
+            }
+        )
+
+    return UserPlaylistsResponse(
+        items=items,
+        total=spotify_data.get("total", 0),
+        limit=limit,
+    )
 
 
 @router.post("/sync", response_model=AnalyticsSyncResponse)

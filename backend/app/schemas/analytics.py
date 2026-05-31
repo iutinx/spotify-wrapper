@@ -124,3 +124,24 @@ class RecentlyPlayedResponse(BaseModel):
 
     items: list[ListeningHistoryItem]
     cursor: Optional[str] = None
+
+
+class PlaylistItem(BaseModel):
+    """Single playlist from user's playlists."""
+
+    spotify_playlist_id: str
+    name: str
+    description: Optional[str]
+    image_url: Optional[str]
+    tracks_total: int
+    owner_display_name: Optional[str]
+    is_collaborative: bool
+    is_public: bool
+
+
+class UserPlaylistsResponse(BaseModel):
+    """Response for user playlists endpoint."""
+
+    items: list[PlaylistItem]
+    total: int
+    limit: int

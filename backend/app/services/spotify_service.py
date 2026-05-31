@@ -34,6 +34,7 @@ class SpotifyService:
             "user-top-read",
             "user-read-recently-played",
             "user-read-currently-playing",
+            "playlist-read-private",
         ]
 
         params = {
@@ -191,6 +192,25 @@ class SpotifyService:
             )
             if response.status_code == 204:
                 return None
+            response.raise_for_status()
+            return response.json()
+
+    async def get_user_playlists(self, access_token: str, limit: int = 50) -> dict[str, Any]:
+        """
+        get user's playlists from spotify
+
+        args:
+            access_token: valid spotify access token
+            limit: number of playlists to return (max 50)
+
+        returns - response with items array of playlist objects
+        """
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{self.api_base_url}/me/playlists",
+                headers={"Authorization": f"Bearer {access_token}"},
+                params={"limit": limit},
+            )
             response.raise_for_status()
             return response.json()
 
