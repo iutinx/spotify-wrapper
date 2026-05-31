@@ -31,7 +31,7 @@ export function CustomCursor() {
     const enter = () => ringRef.current?.classList.add("hover");
     const leave = () => ringRef.current?.classList.remove("hover");
     const hoverEls = document.querySelectorAll(
-      ".resonance button, .resonance a, .resonance-login button, .resonance-login a",
+      ".resonance button, .resonance a, .resonance-login button, .resonance-login a, .resonance-dashboard button, .resonance-dashboard a",
     );
     hoverEls.forEach((el) => {
       el.addEventListener("mouseenter", enter);
