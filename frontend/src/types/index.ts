@@ -119,6 +119,7 @@ export interface RollingWindowStats {
   total_plays: number;
   unique_tracks: number;
   unique_artists: number;
+  new_discoveries_count: number;
 }
 
 export interface CurrentlyPlayingTrack {
@@ -229,4 +230,24 @@ export interface UserPlaylistsResponse {
   items: PlaylistItem[];
   total: number;
   limit: number;
+}
+
+export interface TopGenre {
+  genre: string;
+  count: number;
+}
+
+export interface ListeningStatsResponse {
+  total_hours_listened: number;
+  listening_streak: number;
+  top_genres: TopGenre[];
+  recent_tracks: {
+    spotify_track_id: string;
+    track_name: string;
+    artist_name: string;
+    album_name: string | null;
+    image_url: string | null;
+    duration_ms: number | null;
+    rank: number;
+  }[];
 }

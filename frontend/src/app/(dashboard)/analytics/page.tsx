@@ -8,8 +8,10 @@ import {
   useRecentlyPlayed,
   useRollingWindow,
   useUserPlaylists,
+  useListeningStats,
 } from "@/hooks/useAnalytics";
 import { useAuth } from "@/hooks/useAuth";
+import { useFriends } from "@/hooks/useSocial";
 
 type ApiTimeRange = "short_term" | "medium_term" | "long_term";
 type RollingDays = 28 | 90 | 180;
@@ -17,7 +19,6 @@ type RollingDays = 28 | 90 | 180;
 const SEG_LABELS = ["4 WEEKS", "6 MONTHS", "ALL TIME"] as const;
 const API_RANGES: ApiTimeRange[] = ["short_term", "medium_term", "long_term"];
 const ROLLING_DAYS: RollingDays[] = [28, 90, 180];
-const CLOCK_HOURS = [4, 3, 2, 2, 3, 5, 9, 14, 20, 26, 30, 28, 34, 30, 26, 30, 38, 46, 60, 78, 92, 99, 72, 40];
 const PLAYLIST_COLORS = [10, 80, 150, 220, 300];
 
 function timeAgo(dateStr: string): string {
@@ -29,6 +30,13 @@ function timeAgo(dateStr: string): string {
   if (hrs < 24) return `${hrs} hr ago`;
   const days = Math.floor(hrs / 24);
   return days === 1 ? "yesterday" : `${days} days ago`;
+}
+
+function formatMinutes(totalMinutes: number): string {
+  if (totalMinutes >= 1000) {
+    return (totalMinutes / 1000).toFixed(1).replace(/\.0$/, "");
+  }
+  return totalMinutes.toString();
 }
 
 export default function AnalyticsPage() {
@@ -43,6 +51,8 @@ export default function AnalyticsPage() {
   const { data: recentData } = useRecentlyPlayed();
   const { data: rollingData } = useRollingWindow(rollingDays);
   const { data: playlistsData } = useUserPlaylists();
+  const { data: statsData } = useListeningStats();
+  const { data: friendsData } = useFriends();
 
   const greeting = (() => {
     const h = new Date().getHours();
@@ -77,16 +87,68 @@ export default function AnalyticsPage() {
 
   const topTracks = tracksData?.tracks?.slice(0, 4) ?? [];
   const topArtists = artistsData?.artists?.slice(0, 4) ?? [];
-  const topGenres =
-    rollingData?.top_genres?.slice(0, 5).map((g) => g.genre) ?? [
-      "indie",
-      "lo-fi",
-      "jazz",
-      "neo-soul",
-      "ambient",
-    ];
 
-  const clockMax = Math.max(...CLOCK_HOURS);
+  const topGenres = useMemo(() => {
+    const genres = rollingData?.top_genres?.slice(0, 5).map((g) => g.genre);
+    if (genres && genres.length > 0) return genres;
+    const fallback = statsData?.top_genres?.slice(0, 5).map((g) => g.genre);
+    if (fallback && fallback.length > 0) return fallback;
+    return ["indie", "lo-fi", "jazz", "neo-soul", "ambient"];
+  }, [rollingData?.top_genres, statsData?.top_genres]);
+
+  const clockHours = useMemo(() => {
+    if (!recentData?.items || recentData.items.length === 0) {
+      return [4, 3, 2, 2, 3, 5, 9, 14, 20, 26, 30, 28, 34, 30, 26, 30, 38, 46, 60, 78, 92, 99, 72, 40];
+    }
+    const buckets = new Array(24).fill(0);
+    recentData.items.forEach((item) => {
+      const hour = new Date(item.played_at).getHours();
+      buckets[hour]++;
+    });
+    return buckets;
+  }, [recentData?.items]);
+
+  const clockMax = Math.max(...clockHours, 1);
+
+  const minutesListened = statsData ? statsData.total_hours_listened * 60 : 0;
+  const currentStreak = statsData?.listening_streak ?? 0;
+
+  const newDiscoveriesCount = rollingData?.new_discoveries_count ?? 0;
+
+  const newDiscoveryCovers = useMemo(() => {
+    if (newDiscoveriesCount === 0) return null;
+    const tracks = rollingData?.top_tracks?.slice(0, 4) ?? [];
+    if (tracks.length > 0) return tracks;
+    return null;
+  }, [rollingData?.top_tracks, newDiscoveriesCount]);
+
+  const newThisPeriodItems = useMemo(() => {
+    if (recentData?.items && recentData.items.length >= 2) {
+      return recentData.items.slice(-2);
+    }
+    return [
+      { track_name: "Glasshouse", artist_name: "V. Mora", image_url: null },
+      { track_name: "Cinder", artist_name: "The Owls", image_url: null },
+    ];
+  }, [recentData?.items]);
+
+  const friendsListeningItems = useMemo(() => {
+    if (!friendsData || friendsData.length === 0) return null;
+    return friendsData.slice(0, 3).map((friend) => {
+      const currentlyPlaying = (friend as any).currently_playing;
+      const trackInfo = currentlyPlaying?.track
+        ? `${currentlyPlaying.track.track_name ?? "Unknown"} — ${currentlyPlaying.track.artist_name ?? "Unknown"}`
+        : "not listening";
+      const tag = currentlyPlaying?.is_playing ? "live ●" : "offline";
+      return {
+        name: friend.display_name || "Friend",
+        track: trackInfo,
+        tag,
+        a: `${Math.floor(Math.random() * 360)}deg`,
+        image: friend.profile_image_url,
+      };
+    });
+  }, [friendsData]);
 
   return (
     <main className="db-page">
@@ -121,10 +183,10 @@ export default function AnalyticsPage() {
               <span className="db-lbl">Minutes listened</span>
             </div>
             <div className="db-stat">
-              8.4<small>k</small>
+              {minutesListened.toLocaleString()}
             </div>
             <div className="db-stat-cap">
-              <span className="db-trend-up">▲ 12%</span> vs last period
+              {minutesListened > 0 ? `${Math.round(minutesListened / 60)} hours total` : "0 minutes total"}
             </div>
           </div>
           <div className="db-card">
@@ -132,9 +194,11 @@ export default function AnalyticsPage() {
               <span className="db-lbl">Current streak</span>
             </div>
             <div className="db-stat">
-              17<small> days</small>
+              {currentStreak}<small> days</small>
             </div>
-            <div className="db-stat-cap">listened every day</div>
+            <div className="db-stat-cap">
+              {currentStreak > 0 ? "listened every day" : "start listening to build a streak"}
+            </div>
           </div>
         </div>
 
@@ -184,17 +248,17 @@ export default function AnalyticsPage() {
               <span className="db-lbl">New this period</span>
             </div>
             <div className="db-rows">
-              {(
-                recentData?.items?.slice(-2) ?? [
-                  { track_name: "Glasshouse", artist_name: "V. Mora" },
-                  { track_name: "Cinder", artist_name: "The Owls" },
-                ]
-              ).map((item, i) => (
+              {newThisPeriodItems.map((item, i) => (
                 <div className="db-row" key={i}>
                   <div
                     className="db-cover-sq"
                     style={
-                      { "--h": String((i * 176 + 14) % 360) } as React.CSSProperties
+                      item.image_url
+                        ? ({
+                            backgroundImage: `url(${item.image_url})`,
+                            backgroundSize: "cover",
+                          } as React.CSSProperties)
+                        : ({ "--h": String((i * 176 + 14) % 360) } as React.CSSProperties)
                     }
                   />
                   <div className="db-row-meta">
@@ -312,10 +376,14 @@ export default function AnalyticsPage() {
         <div className="db-card db-m-clock">
           <div className="db-card-head">
             <span className="db-lbl">Listening clock</span>
-            <span className="db-val">peak 9–11pm</span>
+            <span className="db-val">
+              {recentData?.items && recentData.items.length > 0
+                ? `based on ${recentData.items.length} recent plays`
+                : "peak 9–11pm"}
+            </span>
           </div>
           <div className="db-clock">
-            {CLOCK_HOURS.map((v, i) => (
+            {clockHours.map((v, i) => (
               <span
                 key={i}
                 className="db-clock-bar"
@@ -363,23 +431,30 @@ export default function AnalyticsPage() {
             <span className="db-more">⋯</span>
           </div>
           <div className="db-friends-list">
-            {[
-              { name: "Ava R.", track: "Slow Tide — Marrow", tag: "live ●", a: "20deg" },
-              { name: "Devin K.", track: "also loves indie", tag: "+3 shared", a: "160deg" },
-              { name: "Mona L.", track: "2h ago — Cinder", tag: "·", a: "280deg" },
-            ].map(({ name, track, tag, a }) => (
-              <div className="db-friend" key={name}>
-                <div
-                  className="db-fava"
-                  style={{ "--a": a } as React.CSSProperties}
-                />
-                <div className="db-fmeta">
-                  <div className="db-fn">{name}</div>
-                  <div className="db-fs">{track}</div>
+            {friendsListeningItems ? (
+              friendsListeningItems.map((friend) => (
+                <div className="db-friend" key={friend.name}>
+                  <div
+                    className="db-fava"
+                    style={{
+                      ...(friend.image ? { backgroundImage: `url(${friend.image})`, backgroundSize: "cover" } : { "--a": friend.a } as React.CSSProperties),
+                    }}
+                  />
+                  <div className="db-fmeta">
+                    <div className="db-fn">{friend.name}</div>
+                    <div className="db-fs">{friend.track}</div>
+                  </div>
+                  <span className="db-ftag">{friend.tag}</span>
                 </div>
-                <span className="db-ftag">{tag}</span>
+              ))
+            ) : (
+              <div className="db-friends-empty">
+                <div className="db-t2">No friends yet</div>
+                <div className="db-t2" style={{ fontSize: 12, opacity: 0.6 }}>
+                  add friends to see what they&apos;re listening to
+                </div>
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -388,17 +463,30 @@ export default function AnalyticsPage() {
           <div className="db-card-head">
             <span className="db-lbl">New discoveries</span>
           </div>
-          <div className="db-finds-big">23</div>
-          <div className="db-stat-cap">fresh tracks this period</div>
-          <div className="db-finds-row">
-            {[30, 90, 170, 250].map((h) => (
-              <div
-                key={h}
-                className="db-finds-cv"
-                style={{ "--h": String(h) } as React.CSSProperties}
-              />
-            ))}
+          <div className="db-finds-big">{newDiscoveriesCount}</div>
+          <div className="db-stat-cap">
+            {newDiscoveriesCount > 0 ? "fresh tracks this period" : "tracks you haven't heard before"}
           </div>
+          {newDiscoveryCovers && (
+            <div className="db-finds-row">
+              {newDiscoveryCovers.map((track) => (
+                <div
+                  key={track.spotify_track_id}
+                  className="db-finds-cv"
+                  title={`${track.track_name} — ${track.artist_name}`}
+                  style={
+                    track.image_url
+                      ? ({
+                          backgroundImage: `url(${track.image_url})`,
+                          backgroundSize: "cover",
+                          backgroundPosition: "center",
+                        } as React.CSSProperties)
+                      : ({ "--h": String(Math.random() * 360) } as React.CSSProperties)
+                  }
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* playlists */}

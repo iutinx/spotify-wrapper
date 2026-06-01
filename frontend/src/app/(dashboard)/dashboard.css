@@ -574,21 +574,27 @@
 }
 
 .resonance-dashboard .db-finds-row {
-  display: flex;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
   margin-top: 14px;
 }
 
 .resonance-dashboard .db-finds-cv {
-  width: 46px;
-  height: 46px;
-  border-radius: 8px;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 12px;
   border: 1px solid rgba(0, 0, 0, 0.06);
   background: linear-gradient(
     135deg,
     hsl(var(--h, 30) 36% 66%),
     hsl(calc(var(--h, 30) + 36) 40% 44%)
   );
+  transition: transform 0.15s ease;
+}
+
+.resonance-dashboard .db-finds-cv:hover {
+  transform: scale(1.03);
 }
 
 /* ── playlists ───────────────────────────────────────────────────────────── */
