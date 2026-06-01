@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user_db
@@ -59,43 +59,32 @@ async def get_listening_stats(
     access_token = await TokenRefreshService.ensure_fresh_token(user, session)
     cache = await get_cache()
     service = AnalyticsService(session, cache)
+
+    # sync from spotify first so stats reflect actual listening data
+    try:
+        await service.sync_recently_played(user, access_token)
+    except Exception as e:
+        logger.warning(f"spotify sync failed for stats: {e}")
+
     return await service.get_listening_stats(user, access_token)
-
-
-async def _sync_recently_played(user_id: str, spotify_id: str):
-    """Background task to sync recently played tracks from spotify."""
-    from app.database import AsyncSessionLocal
-
-    async with AsyncSessionLocal() as session:
-        try:
-            user = await user_service.get_user_by_spotify_id(session, spotify_id)
-            if not user:
-                return
-
-            access_token = await TokenRefreshService.ensure_fresh_token(user, session)
-            cache = await get_cache()
-            service = AnalyticsService(session, cache)
-
-            count = await service.sync_recently_played(user, access_token)
-            logger.info(f"background sync completed: {count} history entries for {spotify_id}")
-        except Exception as e:
-            logger.error(f"background sync failed for {spotify_id}: {e}")
 
 
 @router.get("/recently-played", response_model=RecentlyPlayedResponse)
 async def get_recently_played(
     limit: int = Query(50, ge=1, le=100),
-    background_tasks: BackgroundTasks = None,
     user: User = Depends(get_current_user_db),
     session: AsyncSession = Depends(get_db),
 ):
-    """Get recently played tracks from local database."""
+    """Get recently played tracks from local database, syncing from spotify first."""
+    access_token = await TokenRefreshService.ensure_fresh_token(user, session)
     cache = await get_cache()
     service = AnalyticsService(session, cache)
 
-    # trigger background sync to keep history fresh
-    if background_tasks:
-        background_tasks.add_task(_sync_recently_played, str(user.id), user.spotify_id)
+    # sync from spotify before returning so data is always fresh
+    try:
+        await service.sync_recently_played(user, access_token)
+    except Exception as e:
+        logger.warning(f"spotify sync failed for recently-played: {e}")
 
     return await service.get_recently_played_history(user, limit)
 

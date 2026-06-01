@@ -6,7 +6,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import CACHE_TTL_USER_TOP_TRACKS
-from app.models import ListeningHistory, User, UserProfile, UserTopArtist, UserTopTrack
+from app.models import ListeningHistory, User, UserTopArtist, UserTopTrack
 from app.schemas.analytics import (
     ArtistResponse,
     ListeningHistoryItem,
@@ -167,29 +167,26 @@ class AnalyticsService:
     async def get_listening_stats(self, user: User, access_token: str) -> ListeningStatsResponse:
         from app.services.spotify_service import spotify_service
 
-        profile_result = await self.session.execute(
-            select(UserProfile).where(UserProfile.user_id == user.id)
-        )
-        profile = profile_result.scalar_one_or_none()
-
-        recent = await spotify_service.get_recently_played(access_token, limit=50)
-
         recent_tracks = []
-        for item in recent.get("items", []):
-            t = item.get("track", {})
-            recent_tracks.append(
-                TrackResponse(
-                    spotify_track_id=t.get("id"),
-                    track_name=t.get("name"),
-                    artist_name=", ".join(a.get("name", "") for a in t.get("artists", [])),
-                    album_name=t.get("album", {}).get("name"),
-                    image_url=t.get("album", {}).get("images", [{}])[0].get("url")
-                    if t.get("album", {}).get("images")
-                    else None,
-                    duration_ms=t.get("duration_ms"),
-                    rank=0,
+        try:
+            recent = await spotify_service.get_recently_played(access_token, limit=50)
+            for item in recent.get("items", []):
+                t = item.get("track", {})
+                recent_tracks.append(
+                    TrackResponse(
+                        spotify_track_id=t.get("id"),
+                        track_name=t.get("name"),
+                        artist_name=", ".join(a.get("name", "") for a in t.get("artists", [])),
+                        album_name=t.get("album", {}).get("name"),
+                        image_url=t.get("album", {}).get("images", [{}])[0].get("url")
+                        if t.get("album", {}).get("images")
+                        else None,
+                        duration_ms=t.get("duration_ms"),
+                        rank=0,
+                    )
                 )
-            )
+        except Exception as e:
+            logger.warning(f"failed to fetch recent tracks from spotify for stats: {e}")
 
         top_genres = []
         artist_result = await self.session.execute(
@@ -202,9 +199,39 @@ class AnalyticsService:
         for g, c in sorted(genre_count.items(), key=lambda x: -x[1])[:10]:
             top_genres.append(TopGenreResponse(genre=g, count=c))
 
+        # compute total minutes from listening history
+        total_plays_result = await self.session.execute(
+            select(func.count(ListeningHistory.id)).where(ListeningHistory.user_id == user.id)
+        )
+        total_plays = total_plays_result.scalar() or 0
+        logger.info(f"stats for user {user.id}: total_plays={total_plays}")
+
+        avg_duration_result = await self.session.execute(
+            select(func.avg(ListeningHistory.duration_ms)).where(ListeningHistory.user_id == user.id)
+        )
+        avg_duration_ms = avg_duration_result.scalar() or 0
+        total_minutes = int((total_plays * avg_duration_ms) / 60000) if avg_duration_ms > 0 else 0
+        logger.info(f"stats for user {user.id}: avg_duration_ms={avg_duration_ms}, total_minutes={total_minutes}")
+
+        # compute listening streak: count consecutive days with at least one play
+        plays_by_day = await self.session.execute(
+            select(func.date(ListeningHistory.played_at).label("play_date"), func.count().label("cnt"))
+            .where(ListeningHistory.user_id == user.id)
+            .group_by(func.date(ListeningHistory.played_at))
+            .order_by(func.date(ListeningHistory.played_at).desc())
+        )
+        streak = 0
+        expected_date = datetime.utcnow().date()
+        for row in plays_by_day.all():
+            if row.play_date == expected_date:
+                streak += 1
+                expected_date -= timedelta(days=1)
+            elif row.play_date < expected_date:
+                break
+
         return ListeningStatsResponse(
-            total_hours_listened=getattr(profile, "total_hours_listened", 0) or 0,
-            listening_streak=getattr(profile, "listening_streak", 0) or 0,
+            total_hours_listened=total_minutes // 60,
+            listening_streak=streak,
             top_genres=top_genres,
             recent_tracks=recent_tracks[:20],
         )
@@ -238,7 +265,7 @@ class AnalyticsService:
                     )
                 )
             )
-            if existing.scalar_one_or_none() is None:
+            if existing.scalars().first() is None:
                 entry = ListeningHistory(
                     user_id=user.id,
                     spotify_track_id=t.get("id", ""),
@@ -386,6 +413,24 @@ class AnalyticsService:
         unique_tracks = len(top_tracks)
         unique_artists = len(top_artists)
 
+        # Compute new discoveries: tracks in current period that were NOT played
+        # in the previous equal-length period
+        prev_period_start = period_start - timedelta(days=days)
+        prev_tracks_result = await self.session.execute(
+            select(ListeningHistory.spotify_track_id)
+            .where(
+                and_(
+                    ListeningHistory.user_id == user.id,
+                    ListeningHistory.played_at >= prev_period_start,
+                    ListeningHistory.played_at < period_start,
+                )
+            )
+            .distinct()
+        )
+        prev_track_ids = {row.spotify_track_id for row in prev_tracks_result.all()}
+        current_track_ids = {t.spotify_track_id for t in top_tracks}
+        new_discoveries_count = len(current_track_ids - prev_track_ids)
+
         result = RollingWindowAnalytics(
             period_days=days,
             period_start=period_start,
@@ -396,6 +441,7 @@ class AnalyticsService:
             total_plays=total_plays,
             unique_tracks=unique_tracks,
             unique_artists=unique_artists,
+            new_discoveries_count=new_discoveries_count,
         )
 
         # Cache for 1 hour

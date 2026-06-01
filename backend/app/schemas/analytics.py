@@ -105,6 +105,7 @@ class RollingWindowAnalytics(BaseModel):
     total_plays: int
     unique_tracks: int
     unique_artists: int
+    new_discoveries_count: int = 0
 
 
 class ListeningHistoryItem(BaseModel):
