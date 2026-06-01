@@ -462,7 +462,7 @@
   display: flex;
   align-items: flex-end;
   gap: 5px;
-  height: 84px;
+  height: 75%;
   margin-top: 4px;
 }
 
@@ -989,5 +989,393 @@
   .resonance-dashboard .db-m-finds,
   .resonance-dashboard .db-m-playlists {
     grid-column: span 12;
+  }
+}
+
+/* ── Friends page ─────────────────────────────────────────────────────────── */
+/* accent chip (shared genres) */
+.resonance-dashboard .db-chip.accent {
+  border-color: rgba(29, 185, 84, 0.4);
+  color: #138a3e;
+  background: rgba(29, 185, 84, 0.08);
+}
+
+/* live tag */
+.resonance-dashboard .db-live-tag {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--db-spotify);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.resonance-dashboard .db-live-tag .db-pulse {
+  width: 6px;
+  height: 6px;
+}
+
+/* favatar gradient (Friends variant of db-fava) */
+.resonance-dashboard .db-favatar {
+  border-radius: 50%;
+  border: 1px solid var(--db-hair);
+  flex: 0 0 auto;
+  background-size: cover;
+  background-position: center;
+}
+.resonance-dashboard .db-favatar.gen {
+  background: conic-gradient(from var(--a, 0deg), #e9e6df, #cdd8cf, #e9e6df);
+}
+
+/* ── leaderboard ── */
+.resonance-dashboard .db-lb-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
+  gap: 30px;
+  align-items: center;
+}
+
+.resonance-dashboard .db-podium {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  align-items: end;
+}
+
+.resonance-dashboard .db-pod {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+}
+
+.resonance-dashboard .db-pod .db-pava {
+  width: 54px;
+  height: 54px;
+}
+
+.resonance-dashboard .db-pod.p1 .db-pava {
+  width: 66px;
+  height: 66px;
+  box-shadow: 0 0 0 3px rgba(29, 185, 84, 0.18);
+}
+
+.resonance-dashboard .db-pod .db-pn {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.resonance-dashboard .db-pod .db-pm {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  color: var(--db-ink-faint);
+}
+
+.resonance-dashboard .db-ped {
+  width: 100%;
+  margin-top: 4px;
+  border: 1px solid var(--db-card-line);
+  border-bottom: none;
+  border-radius: 14px 14px 0 0;
+  background: linear-gradient(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.15));
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12px;
+}
+
+.resonance-dashboard .db-pod.p1 .db-ped {
+  height: 116px;
+  background: linear-gradient(rgba(29, 185, 84, 0.13), rgba(29, 185, 84, 0.02));
+  border-color: rgba(29, 185, 84, 0.35);
+}
+.resonance-dashboard .db-pod.p2 .db-ped {
+  height: 90px;
+}
+.resonance-dashboard .db-pod.p3 .db-ped {
+  height: 68px;
+}
+
+.resonance-dashboard .db-ped .db-prk {
+  font-family: var(--font-serif), serif;
+  font-size: 34px;
+  line-height: 1;
+  color: var(--db-ink-faint);
+}
+.resonance-dashboard .db-pod.p1 .db-ped .db-prk {
+  color: var(--db-spotify);
+}
+
+.resonance-dashboard .db-lb-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.resonance-dashboard .db-lb-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--db-hair);
+}
+.resonance-dashboard .db-lb-row:last-child {
+  border-bottom: none;
+}
+
+.resonance-dashboard .db-lb-row .db-lrk {
+  font-family: var(--font-serif), serif;
+  font-size: 22px;
+  color: var(--db-ink-faint);
+  width: 16px;
+  text-align: center;
+  flex: 0 0 auto;
+}
+
+.resonance-dashboard .db-lb-av {
+  width: 34px;
+  height: 34px;
+}
+
+.resonance-dashboard .db-lb-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.resonance-dashboard .db-lb-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.resonance-dashboard .db-lb-bar {
+  height: 6px;
+  border-radius: 4px;
+  background: var(--db-hair);
+  margin-top: 7px;
+  overflow: hidden;
+}
+.resonance-dashboard .db-lb-bar > i {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #9be3b4, var(--db-spotify));
+}
+
+.resonance-dashboard .db-lb-mins {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  color: var(--db-ink-soft);
+  flex: 0 0 auto;
+}
+
+/* ── match dial ── */
+.resonance-dashboard .db-dial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  line-height: 0;
+}
+.resonance-dashboard .db-dial-num {
+  font-family: var(--font-serif), serif;
+  fill: var(--db-ink);
+}
+.resonance-dashboard .db-dial-pc {
+  fill: var(--db-ink-soft);
+}
+.resonance-dashboard .db-dial-lbl {
+  font-family: var(--font-mono), monospace;
+  fill: var(--db-ink-faint);
+  letter-spacing: 0.14em;
+}
+
+/* ── two-up: closest match + listening now ── */
+.resonance-dashboard .db-two-up {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  gap: 18px;
+  margin-top: 18px;
+  align-items: stretch;
+}
+.resonance-dashboard .db-two-up > .db-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.resonance-dashboard .db-cm-row {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+.resonance-dashboard .db-cm-info {
+  flex: 1;
+  min-width: 0;
+}
+.resonance-dashboard .db-cm-name {
+  font-family: var(--font-serif), serif;
+  font-size: 30px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.resonance-dashboard .db-cm-now {
+  font-size: 13px;
+  color: var(--db-ink-soft);
+  margin: 8px 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.resonance-dashboard .db-cm-now b {
+  font-weight: 600;
+  color: var(--db-ink);
+}
+.resonance-dashboard .db-eq {
+  display: inline-flex;
+  gap: 2px;
+  align-items: flex-end;
+  height: 12px;
+}
+.resonance-dashboard .db-eq i {
+  width: 2.5px;
+  background: var(--db-spotify);
+  border-radius: 1px;
+  animation: db-eq 1s ease-in-out infinite;
+}
+.resonance-dashboard .db-eq i:nth-child(1) {
+  height: 6px;
+  animation-delay: 0s;
+}
+.resonance-dashboard .db-eq i:nth-child(2) {
+  height: 12px;
+  animation-delay: 0.2s;
+}
+.resonance-dashboard .db-eq i:nth-child(3) {
+  height: 8px;
+  animation-delay: 0.4s;
+}
+@keyframes db-eq {
+  0%,
+  100% {
+    transform: scaleY(0.4);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.resonance-dashboard .db-cm-actions {
+  display: flex;
+  gap: 9px;
+  margin-top: auto;
+  padding-top: 18px;
+}
+.resonance-dashboard .db-btn {
+  font-family: var(--font-sans), sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 999px;
+  padding: 9px 17px;
+  border: 1px solid var(--db-hair);
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--db-ink);
+  cursor: none;
+  transition:
+    transform 0.15s,
+    background 0.15s,
+    border-color 0.15s;
+}
+.resonance-dashboard .db-btn:hover {
+  transform: translateY(-1px);
+}
+.resonance-dashboard .db-btn.primary {
+  background: var(--db-ink);
+  color: var(--db-bg);
+  border-color: var(--db-ink);
+}
+.resonance-dashboard .db-btn.primary:hover {
+  background: #000;
+}
+
+.resonance-dashboard .db-cm-shared {
+  margin-top: 16px;
+}
+.resonance-dashboard .db-cm-shared .db-sh-h {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--db-ink-faint);
+  margin-bottom: 9px;
+}
+
+/* ── listening now ── */
+.resonance-dashboard .db-live-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: auto;
+}
+.resonance-dashboard .db-lv-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--db-hair);
+}
+.resonance-dashboard .db-lv-row:last-child {
+  border-bottom: none;
+}
+.resonance-dashboard .db-av-ring {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+.resonance-dashboard .db-av-ring svg {
+  position: absolute;
+  inset: 0;
+}
+.resonance-dashboard .db-av-ring .db-favatar {
+  width: 30px;
+  height: 30px;
+}
+.resonance-dashboard .db-lv-meta {
+  flex: 1;
+  min-width: 0;
+}
+.resonance-dashboard .db-lv-n {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.resonance-dashboard .db-lv-t {
+  font-size: 12px;
+  color: var(--db-ink-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+.resonance-dashboard .db-lv-time {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  color: var(--db-ink-faint);
+  flex: 0 0 auto;
+}
+
+@media (max-width: 980px) {
+  .resonance-dashboard .db-lb-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .resonance-dashboard .db-two-up {
+    grid-template-columns: 1fr;
   }
 }
