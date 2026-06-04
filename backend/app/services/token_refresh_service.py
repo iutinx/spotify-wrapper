@@ -21,8 +21,8 @@ class TokenRefreshService:
             now = datetime.now(timezone.utc)
             if expires_at > now + timedelta(seconds=buffer_seconds):
                 return user.spotify_access_token
-        else:
-            return user.spotify_access_token
+        # expiry unknown (None) or token is expired/expiring → refresh to be safe
+        # rather than handing back a possibly-stale access token.
 
         if not user.spotify_refresh_token:
             raise ValueError("No refresh token available")
@@ -36,9 +36,9 @@ class TokenRefreshService:
             user.spotify_access_token = new_access_token
             if new_refresh_token:
                 user.spotify_refresh_token = new_refresh_token
-            user.spotify_token_expires_at = datetime.now(timezone.utc) + timedelta(
-                seconds=expires_in
-            )
+            # stored as a naive UTC timestamp to match the DB column
+            # (TIMESTAMP WITHOUT TIME ZONE) and the rest of the codebase
+            user.spotify_token_expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
 
             await session.commit()
             logger.info(f"Auto-refreshed Spotify token for user {user.spotify_id}")

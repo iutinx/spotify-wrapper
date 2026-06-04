@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timedelta
 from typing import Optional
 
 from sqlalchemy import select
@@ -38,6 +39,9 @@ class UserService:
         # get user info from Spotify
         spotify_user = await spotify_service.get_current_user(access_token)
 
+        # naive UTC to match the DB column (TIMESTAMP WITHOUT TIME ZONE)
+        token_expires_at = datetime.utcnow() + timedelta(seconds=token_expires_in)
+
         # check if user already exists
         result = await session.execute(select(User).where(User.spotify_id == spotify_id))
         user = result.scalars().first()
@@ -50,6 +54,7 @@ class UserService:
             user.spotify_access_token = access_token
             if refresh_token:
                 user.spotify_refresh_token = refresh_token
+            user.spotify_token_expires_at = token_expires_at
             logger.info(f"Updated user: {spotify_id}")
         else:
             # create new user
@@ -60,6 +65,7 @@ class UserService:
                 profile_image_url=spotify_user.get("images", [{}])[0].get("url"),
                 spotify_access_token=access_token,
                 spotify_refresh_token=refresh_token,
+                spotify_token_expires_at=token_expires_at,
             )
             session.add(user)
             logger.info(f"Created new user: {spotify_id}")
