@@ -284,6 +284,52 @@ class AnalyticsService:
         await self.session.commit()
         return count
 
+    async def sync_currently_playing(self, user: User, access_token: str) -> int:
+        """Capture the track playing right now into listening history.
+
+        Spotify's recently-played endpoint only logs a track after it finishes
+        and can lag by a long time, so the currently-playing endpoint is the
+        reliable source for "what am I listening to now". Inserting it here keeps
+        the recently-played wheel fresh in near real time.
+        """
+        from app.services.spotify_service import spotify_service
+
+        current = await spotify_service.get_currently_playing(access_token)
+        if not current or not current.get("is_playing"):
+            return 0
+
+        t = current.get("item") or {}
+        track_id = t.get("id")
+        if not track_id:
+            return 0
+
+        # skip if this same track is already the most recent entry — avoids a new
+        # row on every poll while a single track keeps playing
+        latest = await self.session.execute(
+            select(ListeningHistory)
+            .where(ListeningHistory.user_id == user.id)
+            .order_by(ListeningHistory.played_at.desc())
+            .limit(1)
+        )
+        last = latest.scalars().first()
+        if last is not None and last.spotify_track_id == track_id:
+            return 0
+
+        images = t.get("album", {}).get("images")
+        entry = ListeningHistory(
+            user_id=user.id,
+            spotify_track_id=track_id,
+            track_name=t.get("name", ""),
+            artist_name=", ".join(a.get("name", "") for a in t.get("artists", [])),
+            album_name=t.get("album", {}).get("name"),
+            image_url=images[0].get("url") if images else None,
+            played_at=datetime.utcnow(),
+            duration_ms=t.get("duration_ms"),
+        )
+        self.session.add(entry)
+        await self.session.commit()
+        return 1
+
     async def get_rolling_window_analytics(
         self,
         user: User,

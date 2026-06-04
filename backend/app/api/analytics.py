@@ -86,6 +86,13 @@ async def get_recently_played(
     except Exception as e:
         logger.warning(f"spotify sync failed for recently-played: {e}")
 
+    # also capture the live track — recently-played lags badly, so this keeps
+    # the wheel current with what's actually playing now
+    try:
+        await service.sync_currently_playing(user, access_token)
+    except Exception as e:
+        logger.warning(f"spotify sync failed for currently-playing: {e}")
+
     return await service.get_recently_played_history(user, limit)
 
 
@@ -142,6 +149,7 @@ async def sync_analytics(
     logger.info(f"Analytics sync started for user {user.spotify_id}")
 
     history_count = await service.sync_recently_played(user, access_token)
+    history_count += await service.sync_currently_playing(user, access_token)
     await service.get_user_top_tracks(user, access_token, "short_term", 50)
     await service.get_user_top_artists(user, access_token, "short_term", 50)
 
