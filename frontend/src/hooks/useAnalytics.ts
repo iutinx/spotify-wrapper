@@ -37,6 +37,11 @@ export function useRecentlyPlayed() {
     },
     staleTime: 0,
     refetchInterval: 30_000,
+    // keep polling while music plays in a backgrounded tab, and refresh the
+    // moment the user returns to the dashboard, so the wheel always reflects
+    // what was actually just listened to.
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
   });
 }
 
