@@ -47,6 +47,7 @@ export default function AnalyticsPage() {
   const rollingDays = ROLLING_DAYS[segIdx];
 
   const { data: tracksData } = useTopTracks(timeRange);
+  const { data: longTermTracksData } = useTopTracks("long_term");
   const { data: artistsData } = useTopArtists(timeRange);
   const { data: recentData } = useRecentlyPlayed();
   const { data: rollingData } = useRollingWindow(rollingDays);
@@ -113,14 +114,21 @@ export default function AnalyticsPage() {
   const minutesListened = statsData ? statsData.total_hours_listened * 60 : 0;
   const currentStreak = statsData?.listening_streak ?? 0;
 
-  const newDiscoveriesCount = rollingData?.new_discoveries_count ?? 0;
+  const newDiscoveries = useMemo(() => {
+    if (!recentData?.items || !longTermTracksData?.tracks) return { count: 0, tracks: [] };
 
-  const newDiscoveryCovers = useMemo(() => {
-    if (newDiscoveriesCount === 0) return null;
-    const tracks = rollingData?.top_tracks?.slice(0, 4) ?? [];
-    if (tracks.length > 0) return tracks;
-    return null;
-  }, [rollingData?.top_tracks, newDiscoveriesCount]);
+    const seen = new Set<string>();
+    const deduped = recentData.items.filter((item) => {
+      if (seen.has(item.spotify_track_id)) return false;
+      seen.add(item.spotify_track_id);
+      return true;
+    });
+
+    const topIds = new Set(longTermTracksData.tracks.map((t) => t.spotify_track_id));
+
+    const tracks = deduped.filter((item) => !topIds.has(item.spotify_track_id));
+    return { count: tracks.length, tracks };
+  }, [recentData, longTermTracksData]);
 
   const newThisPeriodItems = useMemo(() => {
     if (recentData?.items && recentData.items.length >= 2) {
@@ -463,27 +471,31 @@ export default function AnalyticsPage() {
           <div className="db-card-head">
             <span className="db-lbl">New discoveries</span>
           </div>
-          <div className="db-finds-big">{newDiscoveriesCount}</div>
+          <div className="db-finds-big">{newDiscoveries.count}</div>
           <div className="db-stat-cap">
-            {newDiscoveriesCount > 0 ? "fresh tracks this period" : "tracks you haven't heard before"}
+            {newDiscoveries.count > 0 ? "fresh tracks this period" : "tracks you haven't heard before"}
           </div>
-          {newDiscoveryCovers && (
-            <div className="db-finds-row">
-              {newDiscoveryCovers.map((track) => (
-                <div
-                  key={track.spotify_track_id}
-                  className="db-finds-cv"
-                  title={`${track.track_name} — ${track.artist_name}`}
-                  style={
-                    track.image_url
-                      ? ({
-                          backgroundImage: `url(${track.image_url})`,
-                          backgroundSize: "cover",
-                          backgroundPosition: "center",
-                        } as React.CSSProperties)
-                      : ({ "--h": String(Math.random() * 360) } as React.CSSProperties)
-                  }
-                />
+          {newDiscoveries.tracks.length > 0 && (
+            <div className="db-finds-list">
+              {newDiscoveries.tracks.map((track, i) => (
+                <div key={track.spotify_track_id} className="db-row">
+                  <div
+                    className="db-cover-sq"
+                    style={
+                      track.image_url
+                        ? ({
+                            backgroundImage: `url(${track.image_url})`,
+                            backgroundSize: "cover",
+                          } as React.CSSProperties)
+                        : ({ "--h": String((i * 54 + 8) % 360) } as React.CSSProperties)
+                    }
+                  />
+                  <div className="db-row-meta">
+                    <div className="db-t1">{track.track_name}</div>
+                    <div className="db-t2">{track.artist_name}</div>
+                  </div>
+                  <span className="db-finds-badge">NEW</span>
+                </div>
               ))}
             </div>
           )}
