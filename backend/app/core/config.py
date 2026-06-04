@@ -65,6 +65,10 @@ class Settings(BaseSettings):
     SPOTIFY_OAUTH_URL: str = "https://accounts.spotify.com/api/token"
     SPOTIFY_AUTH_URL: str = "https://accounts.spotify.com/authorize"
 
+    # background listening-history sync (server-side, runs without any client)
+    BACKGROUND_SYNC_ENABLED: bool = True
+    BACKGROUND_SYNC_INTERVAL_SECONDS: int = 120
+
     model_config = SettingsConfigDict(
         env_file=str(_ENV_FILE),
         env_file_encoding="utf-8-sig",

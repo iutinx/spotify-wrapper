@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from urllib.parse import urlencode
@@ -27,6 +28,7 @@ from app.core.errors import (
 from app.core.security import create_access_token, create_refresh_token
 from app.database import AsyncSessionLocal
 from app.schemas.errors import FieldError
+from app.services.background_sync_service import background_sync_loop
 from app.services.cache_service import close_redis, get_redis
 from app.services.oauth_state import OAuthStateStore
 from app.services.spotify_service import spotify_service
@@ -54,7 +56,19 @@ async def lifespan(app: FastAPI):
     await get_redis()
     logger.info("Redis connection established")
     limiter.app_config = app
+
+    sync_task = None
+    if settings.BACKGROUND_SYNC_ENABLED:
+        sync_task = asyncio.create_task(background_sync_loop())
+
     yield
+
+    if sync_task is not None:
+        sync_task.cancel()
+        try:
+            await sync_task
+        except asyncio.CancelledError:
+            pass
     await close_redis()
     logger.info("Shutting down")
 
