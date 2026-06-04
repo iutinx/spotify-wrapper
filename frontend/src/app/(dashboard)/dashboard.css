@@ -486,30 +486,120 @@
   letter-spacing: 0.04em;
 }
 
-/* ── mood bars ───────────────────────────────────────────────────────────── */
-.resonance-dashboard .db-mood-row {
+/* ── artist spotlight ─────────────────────────────────────────────────────── */
+.resonance-dashboard .db-spotlight-visual {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.resonance-dashboard .db-spotlight-img {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  border: 2px solid var(--db-card-line);
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.resonance-dashboard .db-spotlight-img:hover {
+  transform: scale(1.05);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+}
+
+.resonance-dashboard .db-spotlight-rank {
+  position: absolute;
+  bottom: -4px;
+  right: calc(50% - 55px + 8px);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--db-spotify);
+  color: #fff;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  font-weight: 700;
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
+  border: 2px solid var(--db-card);
+  box-shadow: 0 2px 8px rgba(29, 185, 84, 0.3);
 }
 
-.resonance-dashboard .db-mood-label {
-  font-size: 13px;
+.resonance-dashboard .db-spotlight-name {
+  font-family: var(--font-serif), serif;
+  font-size: 32px;
+  font-style: italic;
+  line-height: 1.05;
   color: var(--db-ink);
-  width: 60px;
-  flex-shrink: 0;
+  margin-bottom: 10px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.resonance-dashboard .db-mood-track {
-  flex: 1;
-  height: 8px;
-  border-radius: 4px;
+.resonance-dashboard .db-spotlight-divider {
+  width: 32px;
+  height: 2px;
+  background: var(--db-spotify);
+  border-radius: 1px;
+  margin: 0 auto 12px;
+  opacity: 0.6;
+}
+
+.resonance-dashboard .db-spotlight-label {
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--db-ink-faint);
+  margin-bottom: 4px;
+  text-align: center;
+}
+
+.resonance-dashboard .db-spotlight-track {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--db-ink);
+  margin-bottom: 14px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.resonance-dashboard .db-spotlight-genres {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.resonance-dashboard .db-spotlight-genre {
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--db-ink-soft);
   background: var(--db-hair);
+  padding: 4px 10px;
+  border-radius: 100px;
+  border: 1px solid var(--db-card-line);
 }
 
-.resonance-dashboard .db-mood-fill {
-  height: 8px;
-  border-radius: 4px;
+.resonance-dashboard .db-spotlight-stat {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  color: var(--db-ink-faint);
+  text-align: center;
+  padding-top: 10px;
+  border-top: 1px solid var(--db-hair);
 }
 
 /* ── friends ─────────────────────────────────────────────────────────────── */

@@ -408,28 +408,70 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        {/* mood */}
+        {/* top artist spotlight */}
         <div className="db-card db-m-mood">
           <div className="db-card-head">
-            <span className="db-lbl">Mood</span>
+            <span className="db-lbl">Top Artist</span>
           </div>
-          <div className="db-rows">
-            {[
-              { label: "Energy", pct: 68, color: "var(--db-spotify)" },
-              { label: "Valence", pct: 54, color: "var(--db-ink)" },
-              { label: "Tempo", pct: 42, color: "var(--db-ink-soft)" },
-            ].map(({ label, pct, color }) => (
-              <div className="db-mood-row" key={label}>
-                <span className="db-mood-label">{label}</span>
-                <div className="db-mood-track">
-                  <div
-                    className="db-mood-fill"
-                    style={{ width: `${pct}%`, background: color }}
-                  />
+          {(() => {
+            const artist = artistsData?.artists?.[0];
+            if (!artist) {
+              return (
+                <div className="db-t2" style={{ opacity: 0.6, textAlign: "center" }}>
+                  No artist data yet
                 </div>
-              </div>
-            ))}
-          </div>
+              );
+            }
+            const topTrack = tracksData?.tracks?.find(
+              (t) => t.artist_name === artist.artist_name
+            );
+            const artistTrackCount = tracksData?.tracks?.slice(0, 10).filter(
+              (t) => t.artist_name === artist.artist_name
+            ).length;
+            return (
+              <>
+                <div className="db-spotlight-visual">
+                  <div
+                    className="db-spotlight-img"
+                    style={
+                      artist.image_url
+                        ? {
+                            backgroundImage: `url(${artist.image_url})`,
+                          }
+                        : ({
+                            "--a": String(
+                              (artist.artist_name.charCodeAt(0) || 0) * 15
+                            ),
+                            background:
+                              "conic-gradient(from var(--a, 0deg), #e9e6df, #cdd8cf, #e9e6df)",
+                          } as React.CSSProperties)
+                    }
+                  />
+                  <span className="db-spotlight-rank">#1</span>
+                </div>
+                <div className="db-spotlight-name">
+                  {artist.artist_name}
+                </div>
+                <div className="db-spotlight-divider" />
+                <div className="db-spotlight-label">Top Track</div>
+                <div className="db-spotlight-track">
+                  {topTrack?.track_name || "—"}
+                </div>
+                <div className="db-spotlight-genres">
+                  {artist.genres?.slice(0, 2).map((g) => (
+                    <span key={g} className="db-spotlight-genre">
+                      {g}
+                    </span>
+                  ))}
+                </div>
+                {artistTrackCount !== undefined && artistTrackCount > 1 && (
+                  <div className="db-spotlight-stat">
+                    {artistTrackCount} tracks in your top 10
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
 
         {/* friends */}
