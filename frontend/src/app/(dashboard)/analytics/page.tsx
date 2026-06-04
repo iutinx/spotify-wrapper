@@ -514,7 +514,7 @@ export default function AnalyticsPage() {
             <span className="db-lbl">New discoveries</span>
           </div>
           <div className="db-finds-big">{newDiscoveries.count}</div>
-          <div className="db-stat-cap">
+          <div className="db-t2 db-stat-cap">
             {newDiscoveries.count > 0 ? "fresh tracks this period" : "tracks you haven't heard before"}
           </div>
           {newDiscoveries.tracks.length > 0 && (

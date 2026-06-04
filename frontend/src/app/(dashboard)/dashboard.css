@@ -665,7 +665,7 @@
 
 .resonance-dashboard .db-finds-list {
   margin-top: 14px;
-  max-height: 140px;
+  max-height: 250px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
