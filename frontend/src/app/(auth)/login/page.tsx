@@ -77,7 +77,7 @@ export default function LoginPage() {
               friends.
             </p>
 
-            <WaveformCard />
+            <WaveformCard role="card" />
 
             <button className="btn btn-primary" onClick={login}>
               <span className="ic" aria-hidden="true">
