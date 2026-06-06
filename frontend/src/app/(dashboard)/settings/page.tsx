@@ -1,10 +1,21 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import axios from "axios";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { apiClient } from "@/lib/api-client";
+import { useToast } from "@/hooks/useToast";
+import {
+  useMe,
+  useUpdateProfile,
+  useUploadAvatar,
+  useResetAvatar,
+  useExportData,
+  useClearHistory,
+  useDeleteAccount,
+  type ProfileUpdate,
+} from "@/hooks/useProfile";
+import { useSyncAnalytics, useListeningStats, useTopArtists } from "@/hooks/useAnalytics";
 import "./settings.css";
 
 /* ── audience model ───────────────────────────────────────────────────────── */
@@ -48,7 +59,7 @@ const INITIAL_AUD: Record<ChipKey, Audience> = Object.fromEntries(
   CHIPS.map((c) => [c.key, c.initial]),
 ) as Record<ChipKey, Audience>;
 
-// the "Now playing" chip mirrors the real backend activity-visibility field
+// chip audience <-> backend visibility
 type ActivityVisibility = "public" | "friends_only" | "private";
 const AUD_TO_VIS: Record<Audience, ActivityVisibility> = {
   everyone: "public",
@@ -65,6 +76,42 @@ function isVisible(aud: Audience, viewer: Viewer): boolean {
   if (aud === "me") return false;
   if (aud === "everyone") return true;
   return viewer === "FRIEND";
+}
+
+// avatar_url from the backend is relative ("/media/...") to the API host
+const MEDIA_BASE = process.env.NEXT_PUBLIC_API_URL || "https://127.0.0.1:5000";
+function resolveAvatar(avatarUrl?: string | null, spotifyUrl?: string | null): string | null {
+  if (avatarUrl) {
+    return avatarUrl.startsWith("http") ? avatarUrl : `${MEDIA_BASE}${avatarUrl}`;
+  }
+  return spotifyUrl ?? null;
+}
+
+function timeAgo(dateStr?: string | null): string {
+  if (!dateStr) return "never";
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hr ago`;
+  const days = Math.floor(hrs / 24);
+  return days === 1 ? "yesterday" : `${days} days ago`;
+}
+
+function formatThousands(n: number): string {
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, "") + "k";
+  return String(n);
+}
+
+function memberSince(dateStr?: string | null): string {
+  if (!dateStr) return "—";
+  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
+
+function prettyPlan(product?: string | null): string {
+  if (!product) return "Spotify";
+  return "Spotify " + product.charAt(0).toUpperCase() + product.slice(1);
 }
 
 /* ── avatar disk ──────────────────────────────────────────────────────────── */
@@ -92,12 +139,28 @@ const MINI_CLOCK = [30, 48, 58, 42, 64, 82, 98, 72, 52, 36];
 export default function SettingsPage() {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
+
+  const { data: me } = useMe();
+  const profile = me?.profile ?? null;
+  const updateProfile = useUpdateProfile(me?.id);
+  const uploadAvatar = useUploadAvatar();
+  const resetAvatar = useResetAvatar();
+  const exportData = useExportData();
+  const clearHistory = useClearHistory();
+  const deleteAccount = useDeleteAccount();
+  const syncAnalytics = useSyncAnalytics();
+  const { data: stats } = useListeningStats();
+  const { data: topArtists } = useTopArtists("short_term");
+
+  const avatarSrc = resolveAvatar(profile?.avatar_url, me?.profile_image_url ?? user?.profile_image_url);
 
   // ── profile fields ──
   const [name, setName] = useState("listener");
   const [handle, setHandle] = useState("listener_42");
   const [bio, setBio] = useState("indie kid, perpetual lo-fi");
-  const seededRef = useRef(false);
+  const [handleError, setHandleError] = useState<string | null>(null);
+  const profileSeeded = useRef(false);
 
   // ── audience state ──
   const [aud, setAudState] = useState<Record<ChipKey, Audience>>(INITIAL_AUD);
@@ -105,78 +168,84 @@ export default function SettingsPage() {
   useEffect(() => {
     audRef.current = aud;
   }, [aud]);
+  const audSeeded = useRef(false);
   const [viewer, setViewer] = useState<Viewer>("FRIEND");
 
-  // ── save + toast state ──
+  // ── debounced autosave ──
   const [saving, setSaving] = useState(false);
-  const [toastMsg, setToastMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const pendingSave = useRef<ProfileUpdate>({});
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── backend wiring ──
-  const { data: meData } = useQuery({
-    queryKey: ["me"],
-    queryFn: async () => {
-      const res = await apiClient.get<{ profile?: { activity_visibility?: string } }>(
-        "/api/users/me",
-      );
-      return res.data;
-    },
-  });
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const updatePrivacyMutation = useMutation({
-    mutationFn: async (visibility: ActivityVisibility) => {
-      const res = await apiClient.put("/api/users/me/activity-privacy", {
-        activity_privacy: visibility,
+  // seed editable fields + audience once /me arrives (sync from server data)
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (!me || profileSeeded.current) return;
+    profileSeeded.current = true;
+    setName(me.display_name || "listener");
+    setHandle(
+      me.profile?.handle ||
+        (me.display_name
+          ? me.display_name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")
+          : "listener_42"),
+    );
+    if (me.profile?.bio != null) setBio(me.profile.bio);
+  }, [me]);
+
+  useEffect(() => {
+    if (!profile || audSeeded.current) return;
+    audSeeded.current = true;
+    const share = profile.share_settings;
+    if (share) {
+      setAudState((prev) => {
+        const next = { ...prev };
+        (Object.keys(prev) as ChipKey[]).forEach((k) => {
+          const vis = share[k];
+          if (vis) next[k] = VIS_TO_AUD[vis];
+        });
+        return next;
       });
-      return res.data;
-    },
-  });
-
-  const disconnectMutation = useMutation({
-    mutationFn: async () => {
-      await apiClient.post("/api/auth/logout");
-    },
-    onSuccess: () => {
-      logout();
-      router.push("/login");
-    },
-  });
-
-  // seed profile + nowplaying audience from the authed user / backend once
-  useEffect(() => {
-    if (user && !seededRef.current) {
-      seededRef.current = true;
-      const display = user.display_name || "listener";
-      setName(display);
-      setHandle(display.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "listener_42");
+    } else if (profile.activity_visibility) {
+      setAudState((prev) => ({ ...prev, nowplaying: VIS_TO_AUD[profile.activity_visibility] }));
     }
-  }, [user]);
+  }, [profile]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
-  useEffect(() => {
-    const vis = meData?.profile?.activity_visibility;
-    if (vis === "public" || vis === "friends_only" || vis === "private") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing audience from backend
-      setAudState((prev) => ({ ...prev, nowplaying: VIS_TO_AUD[vis] }));
+  const flushSave = useCallback(() => {
+    const payload = pendingSave.current;
+    pendingSave.current = {};
+    if (Object.keys(payload).length === 0) {
+      setSaving(false);
+      return;
     }
-  }, [meData]);
+    updateProfile.mutate(payload, {
+      onSuccess: () => setHandleError(null),
+      onError: (err) => {
+        if (axios.isAxiosError(err) && err.response?.status === 409) {
+          setHandleError("That handle is already taken");
+          toast("Handle already taken", "error");
+        } else {
+          toast("Couldn't save changes", "error");
+        }
+      },
+      onSettled: () => setSaving(false),
+    });
+  }, [updateProfile, toast]);
 
-  const pulseSave = useCallback(() => {
-    setSaving(true);
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => setSaving(false), 600);
-  }, []);
-
-  const toast = useCallback((text: string, ok = true) => {
-    setToastMsg({ text, ok });
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToastMsg(null), 1800);
-  }, []);
+  const scheduleSave = useCallback(
+    (partial: ProfileUpdate) => {
+      pendingSave.current = { ...pendingSave.current, ...partial };
+      setSaving(true);
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(flushSave, 700);
+    },
+    [flushSave],
+  );
 
   useEffect(
     () => () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
-      if (toastTimer.current) clearTimeout(toastTimer.current);
     },
     [],
   );
@@ -248,16 +317,14 @@ export default function SettingsPage() {
   }, []);
 
   const setAud = useCallback(
-    (key: ChipKey, audience: Audience, silent = false) => {
+    (key: ChipKey, audience: Audience) => {
       setAudState((prev) => ({ ...prev, [key]: audience }));
-      if (key === "nowplaying") updatePrivacyMutation.mutate(AUD_TO_VIS[audience]);
-      if (!silent) {
-        const def = CHIPS.find((c) => c.key === key);
-        toast(`${def?.name} → ${AUD_LABEL[audience]}`);
-        pulseSave();
-      }
+      const def = CHIPS.find((c) => c.key === key);
+      toast(`${def?.name} → ${AUD_LABEL[audience]}`);
+      // persist this card's visibility; backend mirrors nowplaying -> activity_visibility
+      scheduleSave({ share_settings: { [key]: AUD_TO_VIS[audience] } });
     },
-    [pulseSave, toast, updatePrivacyMutation],
+    [scheduleSave, toast],
   );
 
   /* ── drag handlers ── */
@@ -308,10 +375,87 @@ export default function SettingsPage() {
     }
   };
 
+  /* ── profile field edits ── */
+  const onNameChange = (v: string) => {
+    setName(v);
+    scheduleSave({ display_name: v });
+  };
+  const onHandleChange = (v: string) => {
+    setHandle(v);
+    setHandleError(null);
+    scheduleSave({ handle: v });
+  };
+  const onBioChange = (v: string) => {
+    setBio(v);
+    scheduleSave({ bio: v });
+  };
+
+  /* ── avatar ── */
+  const onAvatarFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast("Image must be 2MB or smaller", "error");
+      return;
+    }
+    uploadAvatar.mutate(file, {
+      onSuccess: () => toast("Avatar updated"),
+      onError: () => toast("Avatar upload failed", "error"),
+    });
+  };
+  const onUseSpotify = () => {
+    resetAvatar.mutate(undefined, {
+      onSuccess: () => toast("Reverted to Spotify avatar"),
+      onError: () => toast("Couldn't reset avatar", "error"),
+    });
+  };
+
+  /* ── account actions ── */
+  const onExport = () => {
+    toast("Preparing export…");
+    exportData.mutate(undefined, {
+      onError: () => toast("Export failed", "error"),
+    });
+  };
+  const onClearHistory = () => {
+    if (!confirm("Clear your listening history? This wipes your stats but keeps your account. Not reversible.")) return;
+    clearHistory.mutate(undefined, {
+      onSuccess: () => toast("Listening history cleared"),
+      onError: () => toast("Couldn't clear history", "error"),
+    });
+  };
+  const onDeleteAccount = () => {
+    if (!confirm("Permanently delete your account? This removes your profile, stats, and friend connections. This cannot be undone.")) return;
+    deleteAccount.mutate(undefined, {
+      onSuccess: () => {
+        logout();
+        router.push("/login");
+      },
+      onError: () => toast("Couldn't delete account", "error"),
+    });
+  };
+  const onResync = () => {
+    syncAnalytics.mutate(undefined, {
+      onSuccess: () => toast("Re-sync complete"),
+      onError: () => toast("Re-sync failed", "error"),
+    });
+  };
+  const handleDisconnect = () => {
+    if (confirm("Disconnect Spotify? You'll be logged out and need to reconnect to use the app.")) {
+      logout();
+      router.push("/login");
+    }
+  };
+
   /* ── derived ── */
   const cleanHandle = handle.replace(/^@/, "") || "handle";
   const legend = { everyone: 0, friends: 0, me: 0 };
   (Object.values(aud) as Audience[]).forEach((a) => legend[a]++);
+
+  const minutesValue = stats ? Math.round(stats.total_hours_listened * 60) : null;
+  const topArtistName = topArtists?.artists?.[0]?.artist_name ?? null;
+  const topArtistExtra = topArtists?.artists ? Math.max(topArtists.artists.length - 1, 0) : 0;
 
   const previewRows: { key: ChipKey; k: string; body: React.ReactNode }[] = [
     {
@@ -328,8 +472,31 @@ export default function SettingsPage() {
         </>
       ),
     },
-    { key: "topartists", k: "Top", body: <>Marrow<small>+ 4 more</small></> },
-    { key: "minutes", k: "Mins", body: <>8.4k<small>this month</small></> },
+    {
+      key: "topartists",
+      k: "Top",
+      body: topArtistName ? (
+        <>
+          {topArtistName}
+          {topArtistExtra > 0 && <small>+ {topArtistExtra} more</small>}
+        </>
+      ) : (
+        <>Marrow<small>+ 4 more</small></>
+      ),
+    },
+    {
+      key: "minutes",
+      k: "Mins",
+      body:
+        minutesValue != null ? (
+          <>
+            {formatThousands(minutesValue)}
+            <small>all time</small>
+          </>
+        ) : (
+          <>8.4k<small>this month</small></>
+        ),
+    },
     {
       key: "clock",
       k: "Clock",
@@ -351,20 +518,7 @@ export default function SettingsPage() {
   const total = previewRows.length;
   const countClass = visibleCount === 0 ? "none" : visibleCount < total ? "partial" : "";
 
-  const onProfileEdit = (setter: (v: string) => void) => (v: string) => {
-    setter(v);
-    pulseSave();
-  };
-
-  const handleDisconnect = () => {
-    if (
-      confirm(
-        "Are you sure you want to disconnect Spotify? You will be logged out and need to reconnect to use the app.",
-      )
-    ) {
-      disconnectMutation.mutate();
-    }
-  };
+  const bioLen = bio.length;
 
   return (
     <main className="db-page">
@@ -395,22 +549,22 @@ export default function SettingsPage() {
               </span>
             </div>
             <div className="st-id-block">
-              <Avatar src={user?.profile_image_url} />
+              <Avatar src={avatarSrc} />
               <div className="st-display-name">{name || "listener"}</div>
               <div className="st-handle">@{cleanHandle}</div>
             </div>
             <div className="st-id-foot">
               <div className="st-id-row">
                 <span className="st-id-k">Email</span>
-                <span className="st-id-v">{user?.email || "listener@email.com"}</span>
+                <span className="st-id-v">{me?.email || user?.email || "—"}</span>
               </div>
               <div className="st-id-row">
                 <span className="st-id-k">Plan</span>
-                <span className="st-id-v">Spotify Premium</span>
+                <span className="st-id-v">{prettyPlan(me?.spotify_product)}</span>
               </div>
               <div className="st-id-row">
                 <span className="st-id-k">Member since</span>
-                <span className="st-id-v">Mar 2024</span>
+                <span className="st-id-v">{memberSince(me?.created_at)}</span>
               </div>
             </div>
           </div>
@@ -422,23 +576,19 @@ export default function SettingsPage() {
                 auto
               </span>
             </div>
-            <div className="db-stat">
-              2<small> min ago</small>
-            </div>
+            <div className="db-stat">{timeAgo(me?.last_spotify_sync)}</div>
             <div className="db-stat-cap">
-              <span style={{ color: "var(--db-spotify)", fontWeight: 600 }}>+1,204</span> new plays
-              today
+              <span style={{ color: "var(--db-spotify)", fontWeight: 600 }}>
+                +{(me?.plays_today ?? 0).toLocaleString()}
+              </span>{" "}
+              new plays today
             </div>
             <div className="st-btn-row">
-              <button className="db-btn" onClick={() => toast("Re-sync started…")}>
-                Re-sync ▸
+              <button className="db-btn" onClick={onResync} disabled={syncAnalytics.isPending}>
+                {syncAnalytics.isPending ? "Syncing…" : "Re-sync ▸"}
               </button>
-              <button
-                className="db-btn ghost danger"
-                onClick={handleDisconnect}
-                disabled={disconnectMutation.isPending}
-              >
-                {disconnectMutation.isPending ? "Disconnecting…" : "Disconnect"}
+              <button className="db-btn ghost danger" onClick={handleDisconnect}>
+                Disconnect
               </button>
             </div>
           </div>
@@ -468,7 +618,7 @@ export default function SettingsPage() {
             <span className="st-ring-lbl r-me">Private</span>
 
             <div className="st-orbit-you">
-              <Avatar src={user?.profile_image_url} />
+              <Avatar src={avatarSrc} />
               <div className="st-orbit-you-lbl">you</div>
             </div>
 
@@ -530,7 +680,7 @@ export default function SettingsPage() {
             </div>
 
             <div className="st-pv-id">
-              <Avatar src={user?.profile_image_url} />
+              <Avatar src={avatarSrc} />
               <div>
                 <div className="st-pv-name">{name || "listener"}</div>
                 <div className="st-pv-handle">@{cleanHandle}</div>
@@ -574,14 +724,26 @@ export default function SettingsPage() {
               <span className="st-pk">Avatar</span>
               <div className="st-pv">
                 <div className="st-upload">
-                  <Avatar src={user?.profile_image_url} />
+                  <Avatar src={avatarSrc} />
                   <div className="st-upload-actions">
-                    <button className="db-btn" onClick={() => toast("Upload avatar")}>
-                      Upload
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      style={{ display: "none" }}
+                      onChange={onAvatarFile}
+                    />
+                    <button
+                      className="db-btn"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadAvatar.isPending}
+                    >
+                      {uploadAvatar.isPending ? "Uploading…" : "Upload"}
                     </button>
                     <button
                       className="db-btn ghost"
-                      onClick={() => toast("Reset to Spotify avatar")}
+                      onClick={onUseSpotify}
+                      disabled={resetAvatar.isPending}
                     >
                       Use Spotify
                     </button>
@@ -597,7 +759,7 @@ export default function SettingsPage() {
                   type="text"
                   maxLength={32}
                   value={name}
-                  onChange={(e) => onProfileEdit(setName)(e.target.value)}
+                  onChange={(e) => onNameChange(e.target.value)}
                 />
                 <span className="st-prof-hint">
                   Shown on leaderboards and your profile card.
@@ -610,11 +772,16 @@ export default function SettingsPage() {
                 <input
                   className="st-prof-input"
                   type="text"
-                  maxLength={20}
+                  maxLength={30}
                   value={handle}
-                  onChange={(e) => onProfileEdit(setHandle)(e.target.value)}
+                  onChange={(e) => onHandleChange(e.target.value)}
                 />
-                <span className="st-prof-hint">Your unique @ for friends to find you.</span>
+                <span
+                  className="st-prof-hint"
+                  style={handleError ? { color: "var(--db-danger)" } : undefined}
+                >
+                  {handleError || "Your unique @ for friends to find you."}
+                </span>
               </div>
             </div>
             <div className="st-prof-row">
@@ -625,9 +792,9 @@ export default function SettingsPage() {
                   rows={2}
                   maxLength={140}
                   value={bio}
-                  onChange={(e) => onProfileEdit(setBio)(e.target.value)}
+                  onChange={(e) => onBioChange(e.target.value)}
                 />
-                <span className="st-prof-hint">{bio.length} / 140</span>
+                <span className="st-prof-hint">{bioLen} / 140</span>
               </div>
             </div>
           </div>
@@ -646,8 +813,8 @@ export default function SettingsPage() {
                   Download everything Resonance has stored about you, as JSON.
                 </div>
               </div>
-              <button className="db-btn" onClick={() => toast("Preparing export…")}>
-                Export ▸
+              <button className="db-btn" onClick={onExport} disabled={exportData.isPending}>
+                {exportData.isPending ? "Exporting…" : "Export ▸"}
               </button>
             </div>
             <div className="st-acc-row">
@@ -659,9 +826,10 @@ export default function SettingsPage() {
               </div>
               <button
                 className="db-btn ghost danger"
-                onClick={() => toast("Clear history — confirm dialog")}
+                onClick={onClearHistory}
+                disabled={clearHistory.isPending}
               >
-                Clear
+                {clearHistory.isPending ? "Clearing…" : "Clear"}
               </button>
             </div>
             <div className="st-acc-row danger">
@@ -673,9 +841,10 @@ export default function SettingsPage() {
               </div>
               <button
                 className="db-btn danger"
-                onClick={() => toast("Delete account — confirm dialog")}
+                onClick={onDeleteAccount}
+                disabled={deleteAccount.isPending}
               >
-                Delete
+                {deleteAccount.isPending ? "Deleting…" : "Delete"}
               </button>
             </div>
           </div>
@@ -687,15 +856,9 @@ export default function SettingsPage() {
         <span>© Resonance 2026</span>
         <span className="db-footer-live">
           <span className="db-pulse" />
-          Synced with Spotify · 2 min ago
+          Synced with Spotify · {timeAgo(me?.last_spotify_sync)}
         </span>
         <span>v0.4.2 · build 1142</span>
-      </div>
-
-      {/* toast */}
-      <div className={`st-toast${toastMsg ? " show" : ""}`}>
-        {toastMsg?.ok && <span className="st-toast-check" />}
-        {toastMsg?.text}
       </div>
     </main>
   );
