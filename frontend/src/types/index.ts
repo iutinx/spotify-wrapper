@@ -13,6 +13,43 @@ export interface User {
   created_at: string;
 }
 
+export type ActivityVisibility = "public" | "friends_only" | "private";
+
+export type ShareKey = "nowplaying" | "topartists" | "minutes" | "clock" | "match";
+
+export type ShareSettings = Record<ShareKey, ActivityVisibility>;
+
+export interface UserProfile {
+  id: string;
+  user_id: string;
+  handle: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  favorite_genres: string[] | null;
+  favorite_artists: string[] | null;
+  total_hours_listened: number;
+  listening_streak: number;
+  is_public: boolean;
+  activity_visibility: ActivityVisibility;
+  share_settings: ShareSettings | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MeResponse {
+  id: string;
+  spotify_id: string;
+  email: string | null;
+  display_name: string | null;
+  profile_image_url: string | null;
+  spotify_product: string | null;
+  last_spotify_sync: string | null;
+  plays_today: number;
+  created_at: string;
+  updated_at: string;
+  profile: UserProfile | null;
+}
+
 export interface SpotifyTrack {
   id: string;
   name: string;
