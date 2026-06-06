@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from app.core.constants import ActivityVisibility
 from app.database import Base
@@ -31,6 +31,9 @@ class User(Base):
     spotify_refresh_token = Column(String(500), nullable=True)
     spotify_token_expires_at = Column(DateTime, nullable=True)
 
+    # spotify subscription tier ("premium" / "free"), captured at login
+    spotify_product = Column(String(20), nullable=True)
+
     # tracking
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     last_spotify_sync = Column(DateTime, nullable=True)
@@ -56,9 +59,14 @@ class UserProfile(Base):
     user_id = Column(UUID(as_uuid=True), unique=True, nullable=False, index=True)
 
     # profile info
+    handle = Column(String(30), unique=True, nullable=True, index=True)  # @handle, lowercased
+    avatar_url = Column(String(500), nullable=True)  # custom upload, overrides spotify image
     bio = Column(Text, nullable=True)  # user bio/description
     favorite_genres = Column(String(255), nullable=True)  # JSON or comma-separated
     favorite_artists = Column(String(255), nullable=True)  # JSON or comma-separated
+
+    # per-feature sharing: {nowplaying, topartists, minutes, clock, match} -> visibility
+    share_settings = Column(JSONB, nullable=True)
 
     # user statistics
     total_hours_listened = Column(Integer, default=0)
