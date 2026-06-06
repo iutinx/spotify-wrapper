@@ -69,6 +69,11 @@ class Settings(BaseSettings):
     BACKGROUND_SYNC_ENABLED: bool = True
     BACKGROUND_SYNC_INTERVAL_SECONDS: int = 120
 
+    # media / uploads (avatar storage)
+    UPLOAD_DIR: str = "uploads"
+    MEDIA_URL: str = "/media"
+    MAX_AVATAR_BYTES: int = 2 * 1024 * 1024  # 2 MB
+
     model_config = SettingsConfigDict(
         env_file=str(_ENV_FILE),
         env_file_encoding="utf-8-sig",

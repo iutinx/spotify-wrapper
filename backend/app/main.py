@@ -1,12 +1,14 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 from urllib.parse import urlencode
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
@@ -56,6 +58,9 @@ async def lifespan(app: FastAPI):
     await get_redis()
     logger.info("Redis connection established")
     limiter.app_config = app
+
+    # ensure the avatar upload directory exists before StaticFiles serves it
+    Path(settings.UPLOAD_DIR, "avatars").mkdir(parents=True, exist_ok=True)
 
     sync_task = None
     if settings.BACKGROUND_SYNC_ENABLED:
@@ -206,6 +211,10 @@ app.include_router(user.router)
 app.include_router(analytics.router)
 app.include_router(social.router)
 app.include_router(realtime.router)
+
+# serve uploaded media (avatars). dir must exist at mount time.
+Path(settings.UPLOAD_DIR, "avatars").mkdir(parents=True, exist_ok=True)
+app.mount(settings.MEDIA_URL, StaticFiles(directory=settings.UPLOAD_DIR), name="media")
 
 
 CALLBACK_HTML = """<!DOCTYPE html>
