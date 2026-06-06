@@ -1,0 +1,775 @@
+/* ── Settings page — scoped to .resonance-dashboard, reuses --db-* tokens ──── */
+.resonance-dashboard {
+  --db-danger: #b5462f;
+}
+
+/* ── auto-save pill ──────────────────────────────────────────────────────── */
+.resonance-dashboard .st-save-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--db-ink-faint);
+  padding: 9px 16px;
+  border: 1px solid var(--db-hair);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(6px);
+  white-space: nowrap;
+}
+
+.resonance-dashboard .st-save-check {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--db-spotify);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.resonance-dashboard .st-save-state.saving .st-save-check {
+  background: var(--db-ink-faint);
+}
+
+/* ── shared avatar disk ──────────────────────────────────────────────────── */
+.resonance-dashboard .st-avatar {
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  border: 1px solid var(--db-hair);
+  background: conic-gradient(from 200deg, #e9e6df, #cfd9d0, #d8e6df, #e9e6df);
+  background-size: cover;
+  background-position: center;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+
+.resonance-dashboard .st-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ── hero layout (identity · orbit · preview) ────────────────────────────── */
+.resonance-dashboard .st-hero {
+  display: grid;
+  grid-template-columns: 244px 1fr 264px;
+  gap: 26px;
+  align-items: stretch;
+  margin: 30px 0 0;
+}
+
+.resonance-dashboard .st-hero-side {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.resonance-dashboard .st-hero-side > .db-card {
+  flex: 1;
+}
+
+/* ── identity card ───────────────────────────────────────────────────────── */
+.resonance-dashboard .st-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.resonance-dashboard .st-id-block {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+}
+
+.resonance-dashboard .st-id-block .st-avatar {
+  align-self: flex-start;
+}
+
+.resonance-dashboard .st-display-name {
+  font-family: var(--font-serif), serif;
+  font-size: 30px;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  max-width: 100%;
+  min-width: 0;
+  color: var(--db-ink);
+}
+
+.resonance-dashboard .st-handle {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  color: var(--db-ink-faint);
+  letter-spacing: 0.04em;
+}
+
+.resonance-dashboard .st-id-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--db-hair);
+  min-width: 0;
+}
+
+.resonance-dashboard .st-id-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.resonance-dashboard .st-id-k {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--db-ink-faint);
+  flex: 0 0 auto;
+}
+
+.resonance-dashboard .st-id-v {
+  font-size: 12.5px;
+  color: var(--db-ink-soft);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* ── button variants (extend .db-btn) ───────────────────────────────────── */
+.resonance-dashboard .db-btn:hover {
+  background: white;
+}
+
+.resonance-dashboard .db-btn.ghost {
+  background: transparent;
+}
+
+.resonance-dashboard .db-btn.danger {
+  color: var(--db-danger);
+  border-color: rgba(181, 70, 47, 0.25);
+}
+
+.resonance-dashboard .db-btn.danger:hover {
+  background: rgba(181, 70, 47, 0.06);
+  border-color: var(--db-danger);
+}
+
+.resonance-dashboard .st-btn-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: 14px;
+}
+
+/* ── orbit (centerpiece) ─────────────────────────────────────────────────── */
+.resonance-dashboard .st-orbit-card {
+  display: flex;
+  flex-direction: column;
+  padding: 22px 26px 18px;
+  min-height: 540px;
+}
+
+.resonance-dashboard .st-orbit-stage {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.resonance-dashboard .st-orbit-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.resonance-dashboard .st-ring-fill-e {
+  fill: rgba(29, 185, 84, 0.05);
+}
+.resonance-dashboard .st-ring-fill-f {
+  fill: rgba(10, 10, 10, 0.025);
+}
+.resonance-dashboard .st-ring-fill-m {
+  fill: rgba(10, 10, 10, 0.06);
+}
+
+.resonance-dashboard .st-orbit-ring {
+  fill: none;
+  stroke: var(--db-hair);
+  stroke-width: 1;
+  transition: stroke 0.2s, stroke-width 0.2s, opacity 0.2s;
+}
+
+.resonance-dashboard .st-orbit-ring.dashed {
+  stroke-dasharray: 4 5;
+}
+
+.resonance-dashboard .st-orbit-stage.drag-everyone .st-ring-e {
+  stroke: var(--db-spotify);
+  stroke-width: 2;
+}
+.resonance-dashboard .st-orbit-stage.drag-friends .st-ring-f {
+  stroke: var(--db-ink);
+  stroke-width: 1.5;
+}
+.resonance-dashboard .st-orbit-stage.drag-me .st-ring-m {
+  stroke: var(--db-ink);
+  stroke-width: 2;
+}
+
+.resonance-dashboard .st-ring-lbl {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-mono), monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--db-ink-faint);
+  padding: 4px 9px;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid var(--db-hair);
+  border-radius: 999px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.resonance-dashboard .st-ring-lbl.r-everyone {
+  left: 50%;
+  top: 4.5%;
+  color: #138a3e;
+  border-color: rgba(29, 185, 84, 0.3);
+  background: rgba(29, 185, 84, 0.06);
+}
+.resonance-dashboard .st-ring-lbl.r-friends {
+  left: 50%;
+  top: 17%;
+}
+.resonance-dashboard .st-ring-lbl.r-me {
+  left: 50%;
+  top: 31.5%;
+}
+
+.resonance-dashboard .st-orbit-you {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.resonance-dashboard .st-orbit-you .st-avatar {
+  width: 52px;
+  height: 52px;
+  box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.25);
+}
+
+.resonance-dashboard .st-orbit-you-lbl {
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--db-ink-faint);
+}
+
+/* draggable chips — start invisible until JS positions them */
+.resonance-dashboard .st-chip {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 8px 8px;
+  font-family: var(--font-sans), sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--db-ink);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--db-hair);
+  border-radius: 999px;
+  box-shadow: 0 8px 20px -12px rgba(0, 0, 0, 0.35);
+  cursor: none;
+  user-select: none;
+  touch-action: none;
+  transition: left 0.42s cubic-bezier(0.5, 1.4, 0.4, 1),
+    top 0.42s cubic-bezier(0.5, 1.4, 0.4, 1), background 0.15s,
+    border-color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.25s;
+  z-index: 2;
+  backdrop-filter: blur(6px);
+}
+
+.resonance-dashboard .st-chip.placed {
+  opacity: 1;
+}
+
+.resonance-dashboard .st-chip:hover {
+  background: white;
+  box-shadow: 0 12px 24px -12px rgba(0, 0, 0, 0.42);
+}
+
+.resonance-dashboard .st-chip.dragging {
+  transition: none;
+  cursor: none;
+  transform: translate(-50%, -50%) scale(1.06);
+  box-shadow: 0 18px 36px -10px rgba(0, 0, 0, 0.4);
+  z-index: 5;
+}
+
+.resonance-dashboard .st-chip-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--h, 30) 36% 66%),
+    hsl(calc(var(--h, 30) + 36) 40% 44%)
+  );
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 11px;
+}
+
+.resonance-dashboard .st-chip[data-aud="everyone"] {
+  background: rgba(29, 185, 84, 0.08);
+  border-color: rgba(29, 185, 84, 0.35);
+}
+.resonance-dashboard .st-chip[data-aud="everyone"] .st-chip-icon {
+  box-shadow: 0 0 0 2px rgba(29, 185, 84, 0.18);
+}
+.resonance-dashboard .st-chip[data-aud="me"] {
+  background: rgba(10, 10, 10, 0.04);
+  border-color: rgba(10, 10, 10, 0.15);
+  color: var(--db-ink-soft);
+}
+.resonance-dashboard .st-chip[data-aud="me"] .st-chip-icon {
+  filter: grayscale(0.6);
+  opacity: 0.85;
+}
+
+.resonance-dashboard .st-orbit-hint {
+  text-align: center;
+  font-family: var(--font-mono), monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--db-ink-faint);
+  margin-top: 12px;
+}
+
+.resonance-dashboard .st-legend {
+  display: flex;
+  justify-content: center;
+  gap: 22px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--db-hair);
+}
+
+.resonance-dashboard .st-olg {
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--db-ink-faint);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.resonance-dashboard .st-olg b {
+  color: var(--db-ink);
+  font-family: var(--font-serif), serif;
+  font-weight: 400;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  padding-right: 2px;
+  line-height: 1;
+}
+
+.resonance-dashboard .st-olg-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid var(--db-hair);
+}
+.resonance-dashboard .st-olg.e .st-olg-dot {
+  background: rgba(29, 185, 84, 0.6);
+  border-color: rgba(29, 185, 84, 0.4);
+}
+.resonance-dashboard .st-olg.f .st-olg-dot {
+  background: white;
+}
+.resonance-dashboard .st-olg.m .st-olg-dot {
+  background: rgba(10, 10, 10, 0.1);
+  border-color: rgba(10, 10, 10, 0.2);
+}
+
+/* ── live preview card ───────────────────────────────────────────────────── */
+.resonance-dashboard .st-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 20px 18px;
+}
+
+.resonance-dashboard .st-viewer {
+  display: inline-flex;
+  border: 1px solid var(--db-hair);
+  border-radius: 999px;
+  padding: 3px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.resonance-dashboard .st-viewer button {
+  font-family: var(--font-mono), monospace;
+  font-weight: 500;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding: 5px 10px;
+  border: none;
+  background: transparent;
+  color: var(--db-ink-faint);
+  border-radius: 999px;
+  transition: background 0.15s, color 0.15s;
+}
+.resonance-dashboard .st-viewer button.on {
+  background: var(--db-ink);
+  color: var(--db-bg);
+}
+
+.resonance-dashboard .st-pv-id {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--db-hair);
+}
+.resonance-dashboard .st-pv-id .st-avatar {
+  width: 44px;
+  height: 44px;
+}
+.resonance-dashboard .st-pv-name {
+  font-family: var(--font-serif), serif;
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.resonance-dashboard .st-pv-handle {
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  color: var(--db-ink-faint);
+  margin-top: 3px;
+}
+
+.resonance-dashboard .st-pv-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.resonance-dashboard .st-pv-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--db-hair);
+  position: relative;
+}
+.resonance-dashboard .st-pv-row:last-of-type {
+  border-bottom: none;
+}
+.resonance-dashboard .st-pv-row .st-pvk {
+  font-family: var(--font-mono), monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--db-ink-faint);
+  width: 56px;
+  flex: 0 0 auto;
+}
+.resonance-dashboard .st-pv-row .st-pvv {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-serif), serif;
+  font-size: 18px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--db-ink);
+}
+.resonance-dashboard .st-pv-row .st-pvv small {
+  font-family: var(--font-sans), sans-serif;
+  font-size: 11.5px;
+  color: var(--db-ink-faint);
+  font-weight: 400;
+  margin-left: 6px;
+}
+.resonance-dashboard .st-pv-row .db-eq {
+  margin-right: 4px;
+  vertical-align: -1px;
+  height: 11px;
+}
+.resonance-dashboard .st-mini-clock {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 1.5px;
+  height: 16px;
+}
+.resonance-dashboard .st-mini-clock i {
+  width: 3px;
+  background: var(--db-ink);
+  border-radius: 2px 2px 0 0;
+  opacity: 0.7;
+}
+.resonance-dashboard .st-pv-row.hidden .st-pvv {
+  opacity: 0.25;
+  filter: blur(3px);
+}
+.resonance-dashboard .st-pv-row.hidden::after {
+  content: "PRIVATE";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--db-ink-faint);
+  background: rgba(255, 255, 255, 0.95);
+  padding: 3px 9px;
+  border: 1px solid var(--db-hair);
+  border-radius: 999px;
+}
+
+.resonance-dashboard .st-pv-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--db-hair);
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--db-ink-faint);
+}
+.resonance-dashboard .st-visible-count {
+  color: var(--db-spotify);
+}
+.resonance-dashboard .st-visible-count.partial {
+  color: var(--db-ink-soft);
+}
+.resonance-dashboard .st-visible-count.none {
+  color: var(--db-danger);
+}
+
+/* ── modules below hero ──────────────────────────────────────────────────── */
+.resonance-dashboard .st-m-profile {
+  grid-column: span 7;
+}
+.resonance-dashboard .st-m-account {
+  grid-column: span 5;
+}
+
+/* profile editor */
+.resonance-dashboard .st-prof-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.resonance-dashboard .st-prof-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 14px;
+  align-items: start;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--db-hair);
+}
+.resonance-dashboard .st-prof-row:last-child {
+  border-bottom: none;
+}
+.resonance-dashboard .st-prof-row .st-pk {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--db-ink-faint);
+  padding-top: 6px;
+}
+.resonance-dashboard .st-prof-row .st-pv {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.resonance-dashboard .st-prof-input {
+  font-family: var(--font-serif), serif;
+  font-size: 22px;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 4px 6px;
+  margin-left: -6px;
+  border-radius: 4px;
+  color: var(--db-ink);
+  width: 100%;
+  transition: background 0.15s, box-shadow 0.15s;
+  cursor: text;
+}
+.resonance-dashboard .st-prof-input:hover {
+  background: rgba(0, 0, 0, 0.025);
+}
+.resonance-dashboard .st-prof-input:focus {
+  background: rgba(29, 185, 84, 0.06);
+  box-shadow: inset 0 -1px 0 var(--db-spotify);
+}
+.resonance-dashboard textarea.st-prof-input {
+  font-family: var(--font-sans), sans-serif;
+  font-size: 14.5px;
+  font-weight: 400;
+  line-height: 1.45;
+  resize: none;
+  min-height: 44px;
+}
+.resonance-dashboard .st-prof-hint {
+  font-size: 11.5px;
+  color: var(--db-ink-faint);
+}
+.resonance-dashboard .st-upload {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.resonance-dashboard .st-upload .st-avatar {
+  width: 56px;
+  height: 56px;
+}
+.resonance-dashboard .st-upload .st-upload-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* account / danger zone */
+.resonance-dashboard .st-acc-rows {
+  display: flex;
+  flex-direction: column;
+}
+.resonance-dashboard .st-acc-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--db-hair);
+}
+.resonance-dashboard .st-acc-row:last-child {
+  border-bottom: none;
+}
+.resonance-dashboard .st-acc-row .st-ak {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--db-ink);
+}
+.resonance-dashboard .st-acc-row .st-ad {
+  font-size: 12px;
+  color: var(--db-ink-faint);
+  margin-top: 3px;
+  line-height: 1.4;
+  max-width: 36ch;
+}
+.resonance-dashboard .st-acc-row.danger .st-ak {
+  color: var(--db-danger);
+}
+
+/* ── toast ───────────────────────────────────────────────────────────────── */
+.resonance-dashboard .st-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 30px;
+  transform: translateX(-50%) translateY(8px);
+  background: var(--db-ink);
+  color: var(--db-bg);
+  font-family: var(--font-sans), sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 18px;
+  border-radius: 999px;
+  box-shadow: 0 16px 36px -12px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transition: opacity 0.25s, transform 0.25s;
+  z-index: 60;
+  pointer-events: none;
+}
+.resonance-dashboard .st-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.resonance-dashboard .st-toast .st-toast-check {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--db-spotify);
+  margin-right: 8px;
+  vertical-align: -3px;
+}
+
+/* ── responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 1080px) {
+  .resonance-dashboard .st-hero {
+    grid-template-columns: 1fr;
+  }
+  .resonance-dashboard .st-hero-side {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .resonance-dashboard .st-hero-side > .db-card {
+    flex: 1 1 240px;
+  }
+}
+@media (max-width: 760px) {
+  .resonance-dashboard .st-m-profile,
+  .resonance-dashboard .st-m-account {
+    grid-column: span 12;
+  }
+  .resonance-dashboard .st-prof-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
