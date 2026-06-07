@@ -49,8 +49,11 @@ export function useUploadAvatar() {
     mutationFn: async (file: File) => {
       const form = new FormData();
       form.append("file", file);
+      // Let axios derive the multipart Content-Type *with* its boundary from the
+      // FormData. Hardcoding "multipart/form-data" omits the boundary and the
+      // server can't parse the body. `undefined` removes the client's JSON default.
       const response = await apiClient.post<UserProfile>("/api/users/me/avatar", form, {
-        headers: { "Content-Type": "multipart/form-data" },
+        headers: { "Content-Type": undefined },
       });
       return response.data;
     },
@@ -81,13 +84,16 @@ export function useExportData() {
         responseType: "blob",
       });
       const url = URL.createObjectURL(response.data as Blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "resonance-export.json";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      try {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "resonance-export.json";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } finally {
+        URL.revokeObjectURL(url);
+      }
     },
   });
 }

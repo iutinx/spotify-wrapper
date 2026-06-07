@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -152,6 +153,9 @@ async def sync_analytics(
     history_count += await service.sync_currently_playing(user, access_token)
     await service.get_user_top_tracks(user, access_token, "short_term", 50)
     await service.get_user_top_artists(user, access_token, "short_term", 50)
+
+    user.last_spotify_sync = datetime.utcnow()
+    await session.commit()
 
     logger.info(f"Analytics sync completed: {history_count} history entries for {user.spotify_id}")
 

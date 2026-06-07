@@ -70,6 +70,10 @@ export function useSyncAnalytics() {
       queryClient.invalidateQueries({ queryKey: ["top-tracks"] });
       queryClient.invalidateQueries({ queryKey: ["top-artists"] });
       queryClient.invalidateQueries({ queryKey: ["recently-played"] });
+      // refresh the user record so "Last synced" (me.last_spotify_sync) updates,
+      // and listening stats that the sync just refreshed
+      queryClient.invalidateQueries({ queryKey: ["me"] });
+      queryClient.invalidateQueries({ queryKey: ["listening-stats"] });
     },
   });
 }
