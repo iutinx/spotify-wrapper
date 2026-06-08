@@ -3,39 +3,12 @@
   --db-danger: #b5462f;
 }
 
-/* ── auto-save pill ──────────────────────────────────────────────────────── */
-.resonance-dashboard .st-save-state {
+/* ── explicit save controls ──────────────────────────────────────────────── */
+.resonance-dashboard .st-save-bar {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
-  font-family: var(--font-mono), monospace;
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--db-ink-faint);
-  padding: 9px 16px;
-  border: 1px solid var(--db-hair);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(6px);
+  gap: 8px;
   white-space: nowrap;
-}
-
-.resonance-dashboard .st-save-check {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--db-spotify);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 9px;
-  font-weight: 700;
-}
-
-.resonance-dashboard .st-save-state.saving .st-save-check {
-  background: var(--db-ink-faint);
 }
 
 /* ── shared avatar disk ──────────────────────────────────────────────────── */

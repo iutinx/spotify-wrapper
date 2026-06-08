@@ -15,7 +15,12 @@ import {
   useDeleteAccount,
   type ProfileUpdate,
 } from "@/hooks/useProfile";
-import { useSyncAnalytics, useListeningStats, useTopArtists } from "@/hooks/useAnalytics";
+import {
+  useSyncAnalytics,
+  useListeningStats,
+  useTopArtists,
+  useTopTracks,
+} from "@/hooks/useAnalytics";
 import "./settings.css";
 
 /* ── audience model ───────────────────────────────────────────────────────── */
@@ -87,9 +92,16 @@ function resolveAvatar(avatarUrl?: string | null, spotifyUrl?: string | null): s
   return spotifyUrl ?? null;
 }
 
+// Backend serializes naive UTC datetimes without a timezone suffix, which the
+// browser would otherwise parse as local time. Append "Z" so it's read as UTC.
+function parseUtc(dateStr: string): Date {
+  const hasTz = /[zZ]|[+-]\d{2}:?\d{2}$/.test(dateStr);
+  return new Date(hasTz ? dateStr : dateStr + "Z");
+}
+
 function timeAgo(dateStr?: string | null): string {
   if (!dateStr) return "never";
-  const diff = Date.now() - new Date(dateStr).getTime();
+  const diff = Date.now() - parseUtc(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return "just now";
   if (mins < 60) return `${mins} min ago`;
@@ -136,6 +148,8 @@ function Avatar({
 
 const MINI_CLOCK = [30, 48, 58, 42, 64, 82, 98, 72, 52, 36];
 
+const DEFAULT_BIO = "indie kid, perpetual lo-fi";
+
 export default function SettingsPage() {
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -152,13 +166,14 @@ export default function SettingsPage() {
   const syncAnalytics = useSyncAnalytics();
   const { data: stats } = useListeningStats();
   const { data: topArtists } = useTopArtists("short_term");
+  const { data: topTracks } = useTopTracks("short_term");
 
   const avatarSrc = resolveAvatar(profile?.avatar_url, me?.profile_image_url ?? user?.profile_image_url);
 
   // ── profile fields ──
   const [name, setName] = useState("listener");
   const [handle, setHandle] = useState("listener_42");
-  const [bio, setBio] = useState("indie kid, perpetual lo-fi");
+  const [bio, setBio] = useState(DEFAULT_BIO);
   const [handleError, setHandleError] = useState<string | null>(null);
   const profileSeeded = useRef(false);
 
@@ -168,59 +183,80 @@ export default function SettingsPage() {
   useEffect(() => {
     audRef.current = aud;
   }, [aud]);
-  const audSeeded = useRef(false);
   const [viewer, setViewer] = useState<Viewer>("FRIEND");
 
-  // ── debounced autosave ──
-  const [saving, setSaving] = useState(false);
-  const pendingSave = useRef<ProfileUpdate>({});
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // ── explicit save: snapshot of the last-saved state to diff against ──
+  const [baseline, setBaseline] = useState<{
+    name: string;
+    handle: string;
+    bio: string;
+    aud: Record<ChipKey, Audience>;
+  } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // seed editable fields + audience once /me arrives (sync from server data)
-  /* eslint-disable react-hooks/set-state-in-effect */
+  // seed editable fields + audience once /me arrives (sync from server data) and
+  // record that snapshot as the baseline we diff against for the explicit save.
   useEffect(() => {
     if (!me || profileSeeded.current) return;
     profileSeeded.current = true;
-    setName(me.display_name || "listener");
-    setHandle(
+
+    const seededName = me.display_name || "listener";
+    const seededHandle =
       me.profile?.handle ||
-        (me.display_name
-          ? me.display_name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")
-          : "listener_42"),
-    );
-    if (me.profile?.bio != null) setBio(me.profile.bio);
+      (me.display_name
+        ? me.display_name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")
+        : "listener_42");
+    const seededBio = me.profile?.bio ?? DEFAULT_BIO;
+
+    const seededAud: Record<ChipKey, Audience> = { ...INITIAL_AUD };
+    const share = me.profile?.share_settings;
+    if (share) {
+      (Object.keys(seededAud) as ChipKey[]).forEach((k) => {
+        const vis = share[k];
+        if (vis) seededAud[k] = VIS_TO_AUD[vis];
+      });
+    } else if (me.profile?.activity_visibility) {
+      seededAud.nowplaying = VIS_TO_AUD[me.profile.activity_visibility];
+    }
+
+    setName(seededName);
+    setHandle(seededHandle);
+    setBio(seededBio);
+    setAudState(seededAud);
+    setBaseline({ name: seededName, handle: seededHandle, bio: seededBio, aud: seededAud });
   }, [me]);
 
-  useEffect(() => {
-    if (!profile || audSeeded.current) return;
-    audSeeded.current = true;
-    const share = profile.share_settings;
-    if (share) {
-      setAudState((prev) => {
-        const next = { ...prev };
-        (Object.keys(prev) as ChipKey[]).forEach((k) => {
-          const vis = share[k];
-          if (vis) next[k] = VIS_TO_AUD[vis];
-        });
-        return next;
-      });
-    } else if (profile.activity_visibility) {
-      setAudState((prev) => ({ ...prev, nowplaying: VIS_TO_AUD[profile.activity_visibility] }));
+  // build a payload containing only the fields that differ from the last-saved
+  // baseline (profile fields + per-card sharing audiences). null when nothing changed.
+  const buildDirtyPayload = useCallback((): ProfileUpdate | null => {
+    const base = baseline;
+    if (!base) return null;
+    const payload: ProfileUpdate = {};
+    if (name !== base.name) payload.display_name = name;
+    if (handle !== base.handle) payload.handle = handle;
+    if (bio !== base.bio) payload.bio = bio;
+    const shareDiff: Partial<Record<ChipKey, ActivityVisibility>> = {};
+    (Object.keys(aud) as ChipKey[]).forEach((k) => {
+      if (aud[k] !== base.aud[k]) shareDiff[k] = AUD_TO_VIS[aud[k]];
+    });
+    if (Object.keys(shareDiff).length > 0) {
+      payload.share_settings = shareDiff as ProfileUpdate["share_settings"];
     }
-  }, [profile]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+    return Object.keys(payload).length > 0 ? payload : null;
+  }, [baseline, name, handle, bio, aud]);
 
-  const flushSave = useCallback(() => {
-    const payload = pendingSave.current;
-    pendingSave.current = {};
-    if (Object.keys(payload).length === 0) {
-      setSaving(false);
-      return;
-    }
+  const isDirty = buildDirtyPayload() !== null;
+
+  const onSave = useCallback(() => {
+    const payload = buildDirtyPayload();
+    if (!payload) return;
     updateProfile.mutate(payload, {
-      onSuccess: () => setHandleError(null),
+      onSuccess: () => {
+        setHandleError(null);
+        setBaseline({ name, handle, bio, aud });
+        toast("Changes saved");
+      },
       onError: (err) => {
         if (axios.isAxiosError(err) && err.response?.status === 409) {
           setHandleError("That handle is already taken");
@@ -229,26 +265,17 @@ export default function SettingsPage() {
           toast("Couldn't save changes", "error");
         }
       },
-      onSettled: () => setSaving(false),
     });
-  }, [updateProfile, toast]);
+  }, [buildDirtyPayload, updateProfile, name, handle, bio, aud, toast]);
 
-  const scheduleSave = useCallback(
-    (partial: ProfileUpdate) => {
-      pendingSave.current = { ...pendingSave.current, ...partial };
-      setSaving(true);
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(flushSave, 700);
-    },
-    [flushSave],
-  );
-
-  useEffect(
-    () => () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-    },
-    [],
-  );
+  const onDiscard = useCallback(() => {
+    if (!baseline) return;
+    setName(baseline.name);
+    setHandle(baseline.handle);
+    setBio(baseline.bio);
+    setAudState(baseline.aud);
+    setHandleError(null);
+  }, [baseline]);
 
   /* ── orbit positioning ── */
   const orbitRef = useRef<HTMLDivElement>(null);
@@ -321,10 +348,9 @@ export default function SettingsPage() {
       setAudState((prev) => ({ ...prev, [key]: audience }));
       const def = CHIPS.find((c) => c.key === key);
       toast(`${def?.name} → ${AUD_LABEL[audience]}`);
-      // persist this card's visibility; backend mirrors nowplaying -> activity_visibility
-      scheduleSave({ share_settings: { [key]: AUD_TO_VIS[audience] } });
+      // staged only; persisted together with the rest on "Save changes"
     },
-    [scheduleSave, toast],
+    [toast],
   );
 
   /* ── drag handlers ── */
@@ -376,19 +402,12 @@ export default function SettingsPage() {
   };
 
   /* ── profile field edits ── */
-  const onNameChange = (v: string) => {
-    setName(v);
-    scheduleSave({ display_name: v });
-  };
+  const onNameChange = (v: string) => setName(v);
   const onHandleChange = (v: string) => {
     setHandle(v);
     setHandleError(null);
-    scheduleSave({ handle: v });
   };
-  const onBioChange = (v: string) => {
-    setBio(v);
-    scheduleSave({ bio: v });
-  };
+  const onBioChange = (v: string) => setBio(v);
 
   /* ── avatar ── */
   const onAvatarFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -401,7 +420,12 @@ export default function SettingsPage() {
     }
     uploadAvatar.mutate(file, {
       onSuccess: () => toast("Avatar updated"),
-      onError: () => toast("Avatar upload failed", "error"),
+      onError: (err) => {
+        const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+        if (status === 413) toast("Image must be 2MB or smaller", "error");
+        else if (status === 400) toast("Use a PNG, JPEG, or WebP image", "error");
+        else toast("Avatar upload failed", "error");
+      },
     });
   };
   const onUseSpotify = () => {
@@ -415,7 +439,21 @@ export default function SettingsPage() {
   const onExport = () => {
     toast("Preparing export…");
     exportData.mutate(undefined, {
-      onError: () => toast("Export failed", "error"),
+      onSuccess: () => toast("Export downloaded"),
+      onError: async (err) => {
+        // the error body comes back as a Blob (responseType: "blob"); try to
+        // surface the backend's message, otherwise fall back to a generic one.
+        let message = "Export failed";
+        if (axios.isAxiosError(err) && err.response?.data instanceof Blob) {
+          try {
+            const parsed = JSON.parse(await err.response.data.text());
+            if (parsed?.detail) message = String(parsed.detail);
+          } catch {
+            /* keep generic message */
+          }
+        }
+        toast(message, "error");
+      },
     });
   };
   const onClearHistory = () => {
@@ -454,8 +492,10 @@ export default function SettingsPage() {
   (Object.values(aud) as Audience[]).forEach((a) => legend[a]++);
 
   const minutesValue = stats ? Math.round(stats.total_hours_listened * 60) : null;
-  const topArtistName = topArtists?.artists?.[0]?.artist_name ?? null;
-  const topArtistExtra = topArtists?.artists ? Math.max(topArtists.artists.length - 1, 0) : 0;
+  const topArtistList = topArtists?.artists ?? [];
+  const topArtistNames = topArtistList.slice(0, 3).map((a) => a.artist_name).join(" · ");
+  const hasMoreArtists = topArtistList.length > 3;
+  const nowTrack = topTracks?.tracks?.[0] ?? null;
 
   const previewRows: { key: ChipKey; k: string; body: React.ReactNode }[] = [
     {
@@ -468,20 +508,27 @@ export default function SettingsPage() {
             <i />
             <i />
           </span>{" "}
-          Slow Tide<small>· Marrow</small>
+          {nowTrack ? (
+            <>
+              {nowTrack.track_name}
+              <small>· {nowTrack.artist_name}</small>
+            </>
+          ) : (
+            <>Slow Tide<small>· Marrow</small></>
+          )}
         </>
       ),
     },
     {
       key: "topartists",
       k: "Top",
-      body: topArtistName ? (
+      body: topArtistNames ? (
         <>
-          {topArtistName}
-          {topArtistExtra > 0 && <small>+ {topArtistExtra} more</small>}
+          {topArtistNames}
+          {hasMoreArtists && <small>…</small>}
         </>
       ) : (
-        <>Marrow<small>+ 4 more</small></>
+        <>Marrow · Tycho · Boards<small>…</small></>
       ),
     },
     {
@@ -530,10 +577,24 @@ export default function SettingsPage() {
             Tune <em>your signal</em>.
           </h1>
         </div>
-        <span className={`st-save-state${saving ? " saving" : ""}`}>
-          <span className="st-save-check">{saving ? "…" : "✓"}</span>
-          {saving ? "Saving" : "Auto-saved"}
-        </span>
+        <div className="st-save-bar">
+          {isDirty && (
+            <button
+              className="db-btn ghost"
+              onClick={onDiscard}
+              disabled={updateProfile.isPending}
+            >
+              Discard
+            </button>
+          )}
+          <button
+            className="db-btn"
+            onClick={onSave}
+            disabled={!isDirty || updateProfile.isPending}
+          >
+            {updateProfile.isPending ? "Saving…" : isDirty ? "Save changes" : "Saved"}
+          </button>
+        </div>
       </div>
 
       {/* ═══════════ HERO ═══════════ */}
