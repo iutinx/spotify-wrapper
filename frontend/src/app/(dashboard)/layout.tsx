@@ -53,6 +53,7 @@ export default function DashboardLayout({
 
   const tabs = [
     { label: "Dashboard", href: "/analytics" },
+    { label: "Discover", href: "/discover" },
     { label: "Friends", href: "/social" },
     { label: "Settings", href: "/settings" },
   ];
