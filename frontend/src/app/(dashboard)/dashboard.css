@@ -1465,3 +1465,676 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DISCOVER PAGE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* shared card-head title + "see all" link */
+.resonance-dashboard .db-h-title {
+  font-family: var(--font-serif), serif;
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: -0.015em;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.resonance-dashboard .db-h-title em {
+  font-style: italic;
+  color: var(--db-ink-soft);
+  font-size: 14px;
+}
+.resonance-dashboard .db-see {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--db-ink-faint);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: none;
+}
+.resonance-dashboard .db-see:hover {
+  color: var(--db-ink);
+}
+
+/* chip + button modifiers used by Discover */
+.resonance-dashboard .db-chip {
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+.resonance-dashboard .db-chip:hover {
+  color: var(--db-ink);
+  border-color: var(--db-ink-faint);
+}
+.resonance-dashboard .db-chip.accent {
+  border-color: rgba(29, 185, 84, 0.4);
+  color: #138a3e;
+  background: rgba(29, 185, 84, 0.08);
+}
+.resonance-dashboard .db-chip.removable::after {
+  content: " ✕";
+  color: var(--db-ink-faint);
+  margin-left: 4px;
+  font-size: 11px;
+}
+.resonance-dashboard .db-chip.ghost {
+  border-style: dashed;
+}
+.resonance-dashboard .db-btn:hover {
+  border-color: var(--db-ink-faint);
+}
+.resonance-dashboard .db-btn.sm {
+  font-size: 12px;
+  padding: 6px 13px;
+}
+.resonance-dashboard .db-btn.icon {
+  padding: 9px 11px;
+}
+
+/* ── search bar — the hero of this page ── */
+.resonance-dashboard .db-search-shell {
+  position: relative;
+}
+.resonance-dashboard .db-searchbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--db-card);
+  backdrop-filter: blur(12px) saturate(1.05);
+  -webkit-backdrop-filter: blur(12px) saturate(1.05);
+  border: 1px solid var(--db-card-line);
+  border-radius: 28px;
+  padding: 14px 20px;
+  box-shadow: 0 30px 70px -50px rgba(0, 0, 0, 0.5);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.resonance-dashboard .db-searchbar:focus-within {
+  border-color: var(--db-ink);
+  box-shadow:
+    0 30px 70px -45px rgba(0, 0, 0, 0.6),
+    0 0 0 4px rgba(10, 10, 10, 0.04);
+}
+.resonance-dashboard .db-mag {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  color: var(--db-ink-faint);
+}
+.resonance-dashboard .db-searchbar input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-serif), serif;
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 1.1;
+  color: var(--db-ink);
+  letter-spacing: -0.01em;
+}
+.resonance-dashboard .db-searchbar input::placeholder {
+  color: var(--db-ink-faint);
+  font-style: italic;
+}
+.resonance-dashboard .db-clear {
+  display: none;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--db-hair);
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  color: var(--db-ink-soft);
+  font-size: 14px;
+  line-height: 1;
+  cursor: none;
+  flex: 0 0 auto;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    color 0.15s;
+}
+.resonance-dashboard .db-searchbar.has-q .db-clear {
+  display: inline-flex;
+}
+.resonance-dashboard .db-clear:hover {
+  border-color: var(--db-ink);
+  color: var(--db-ink);
+}
+.resonance-dashboard .db-kbd {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  color: var(--db-ink-faint);
+  border: 1px solid var(--db-hair);
+  border-radius: 6px;
+  padding: 3px 8px;
+}
+
+/* suggestion / filter rows below the bar */
+.resonance-dashboard .db-sug-row,
+.resonance-dashboard .db-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 0 6px;
+  flex-wrap: wrap;
+}
+.resonance-dashboard .db-filter-row {
+  gap: 8px;
+}
+.resonance-dashboard .db-sl {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--db-ink-faint);
+  margin-right: 4px;
+}
+
+/* ── empty state: discovery rails ── */
+.resonance-dashboard .db-empty-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  margin-top: 26px;
+}
+
+/* taste twins grid */
+.resonance-dashboard .db-tt-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+.resonance-dashboard .db-pcard {
+  padding: 18px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 9px;
+  position: relative;
+  cursor: none;
+  transition: transform 0.15s;
+}
+.resonance-dashboard .db-pcard:hover {
+  transform: translateY(-2px);
+}
+.resonance-dashboard .db-pc-corner {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+}
+.resonance-dashboard .db-pc-name {
+  font-family: var(--font-serif), serif;
+  font-size: 20px;
+  letter-spacing: -0.015em;
+  line-height: 1;
+}
+.resonance-dashboard .db-pc-handle {
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  color: var(--db-ink-faint);
+  letter-spacing: 0.04em;
+  margin-top: 4px;
+}
+.resonance-dashboard .db-pc-why {
+  font-size: 12px;
+  color: var(--db-ink-soft);
+  line-height: 1.4;
+  min-height: 34px;
+}
+.resonance-dashboard .db-pc-why b {
+  color: var(--db-ink);
+  font-weight: 500;
+}
+.resonance-dashboard .db-pc-acts {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+/* friends-of-friends list */
+.resonance-dashboard .db-fof-row {
+  display: grid;
+  grid-template-columns: 42px 1fr auto auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--db-hair);
+  cursor: none;
+}
+.resonance-dashboard .db-fof-row:last-child {
+  border-bottom: none;
+}
+.resonance-dashboard .db-fof-name {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+}
+.resonance-dashboard .db-fof-why {
+  font-size: 12px;
+  color: var(--db-ink-faint);
+  margin-top: 4px;
+}
+.resonance-dashboard .db-fof-why b {
+  color: var(--db-ink-soft);
+  font-weight: 500;
+}
+
+/* live pulse */
+.resonance-dashboard .db-prows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: auto;
+}
+.resonance-dashboard .db-prow {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--db-hair);
+}
+.resonance-dashboard .db-prow:last-child {
+  border-bottom: none;
+}
+.resonance-dashboard .db-prow-meta {
+  flex: 1;
+  min-width: 0;
+}
+.resonance-dashboard .db-prow-n {
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.resonance-dashboard .db-prow-t {
+  font-size: 11.5px;
+  color: var(--db-ink-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+.resonance-dashboard .db-prow-time {
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  color: var(--db-ink-faint);
+  flex: 0 0 auto;
+}
+
+/* browse by vibe */
+.resonance-dashboard .db-vibe-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.resonance-dashboard .db-vibe-list .db-chip {
+  font-size: 13px;
+  padding: 6px 14px;
+  cursor: none;
+}
+
+/* ── results state ── */
+.resonance-dashboard .db-results-shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 20px;
+  margin-top: 26px;
+  align-items: start;
+}
+
+/* filter sidebar */
+.resonance-dashboard .db-filter-card {
+  padding: 20px 22px 6px;
+  position: sticky;
+  top: 96px;
+}
+.resonance-dashboard .db-fc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--db-hair);
+}
+.resonance-dashboard .db-fgroup {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--db-hair);
+}
+.resonance-dashboard .db-fgroup:last-child {
+  border-bottom: none;
+}
+.resonance-dashboard .db-ft {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--db-ink-faint);
+  margin-bottom: 10px;
+}
+.resonance-dashboard .db-fopt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--db-ink-soft);
+  cursor: none;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+}
+.resonance-dashboard .db-fopt:hover {
+  color: var(--db-ink);
+}
+.resonance-dashboard .db-fopt.on {
+  color: var(--db-ink);
+}
+.resonance-dashboard .db-cb {
+  width: 16px;
+  height: 16px;
+  border: 1px solid #d8d8d8;
+  border-radius: 5px;
+  flex: 0 0 auto;
+  position: relative;
+  background: var(--db-bg);
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.resonance-dashboard .db-fopt.on .db-cb {
+  background: var(--db-ink);
+  border-color: var(--db-ink);
+}
+.resonance-dashboard .db-fopt.on .db-cb::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 5px;
+  height: 9px;
+  border: solid var(--db-bg);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* range slider (draggable dual-range) */
+.resonance-dashboard .db-fslider {
+  padding: 4px 4px 2px;
+}
+.resonance-dashboard .db-fsl-tk {
+  position: relative;
+  height: 6px;
+  background: var(--db-hair);
+  border-radius: 4px;
+  touch-action: none;
+  cursor: none;
+  /* generous invisible hit area so the thin bar is easy to grab */
+  margin: 10px 0;
+}
+.resonance-dashboard .db-fsl-tk::before {
+  content: "";
+  position: absolute;
+  inset: -12px 0;
+}
+.resonance-dashboard .db-fsl-fill {
+  position: absolute;
+  left: 12%;
+  right: 18%;
+  top: 0;
+  bottom: 0;
+  background: var(--db-ink);
+  border-radius: 4px;
+}
+.resonance-dashboard .db-fsl-h {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--db-ink);
+  border-radius: 50%;
+  background: var(--db-bg);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  cursor: none;
+  touch-action: none;
+  z-index: 1;
+}
+.resonance-dashboard .db-fsl-h:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.16);
+}
+.resonance-dashboard .db-fsl-vv {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  color: var(--db-ink-soft);
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* results main */
+.resonance-dashboard .db-results-main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.resonance-dashboard .db-results-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 2px 4px;
+}
+.resonance-dashboard .db-res-count {
+  font-size: 14px;
+  color: var(--db-ink-soft);
+}
+.resonance-dashboard .db-res-count b {
+  font-family: var(--font-serif), serif;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--db-ink);
+  font-size: 22px;
+  padding: 0 3px;
+}
+
+/* pinned top match */
+.resonance-dashboard .db-pin {
+  padding: 26px;
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 22px;
+  align-items: center;
+  border: 1px solid var(--db-card-line);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top right, rgba(29, 185, 84, 0.1), transparent 60%),
+    var(--db-card);
+  backdrop-filter: blur(12px) saturate(1.05);
+  -webkit-backdrop-filter: blur(12px) saturate(1.05);
+  box-shadow: 0 30px 70px -50px rgba(0, 0, 0, 0.5);
+  position: relative;
+  cursor: none;
+}
+.resonance-dashboard .db-pin-tag {
+  position: absolute;
+  top: -10px;
+  left: 26px;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: var(--db-ink);
+  color: var(--db-bg);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+.resonance-dashboard .db-pin-info {
+  min-width: 0;
+}
+.resonance-dashboard .db-pin-name {
+  font-family: var(--font-serif), serif;
+  font-size: 32px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.resonance-dashboard .db-pin-handle {
+  font-size: 13px;
+  color: var(--db-ink-soft);
+  margin-top: 6px;
+}
+.resonance-dashboard .db-pin-why {
+  font-size: 13px;
+  color: var(--db-ink-soft);
+  margin-top: 10px;
+  line-height: 1.45;
+}
+.resonance-dashboard .db-pin-why b {
+  color: var(--db-ink);
+  font-weight: 500;
+}
+.resonance-dashboard .db-pin-acts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ordinary result rows */
+.resonance-dashboard .db-result-list {
+  padding: 6px;
+}
+.resonance-dashboard .db-res {
+  display: grid;
+  grid-template-columns: 44px 1fr auto auto;
+  gap: 18px;
+  align-items: center;
+  padding: 14px 18px;
+  border-radius: 16px;
+  cursor: none;
+  transition: background 0.15s;
+}
+.resonance-dashboard .db-res:hover {
+  background: rgba(0, 0, 0, 0.025);
+}
+.resonance-dashboard .db-res + .db-res {
+  border-top: 1px solid var(--db-hair);
+  border-radius: 0;
+}
+.resonance-dashboard .db-res:hover,
+.resonance-dashboard .db-res:hover + .db-res {
+  border-top-color: transparent;
+}
+.resonance-dashboard .db-res-name {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.resonance-dashboard .db-res-handle {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  color: var(--db-ink-faint);
+  margin-top: 5px;
+}
+.resonance-dashboard .db-res-why {
+  font-size: 12.5px;
+  color: var(--db-ink-soft);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+.resonance-dashboard .db-res-why b {
+  color: var(--db-ink);
+  font-weight: 500;
+}
+.resonance-dashboard .db-res mark,
+.resonance-dashboard .db-res-why mark {
+  background: rgba(29, 185, 84, 0.1);
+  color: #138a3e;
+  padding: 0 3px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+.resonance-dashboard .db-res-acts {
+  display: flex;
+  gap: 7px;
+}
+.resonance-dashboard .db-load-more {
+  display: flex;
+  justify-content: center;
+  padding: 12px;
+}
+
+/* empty results (filters too narrow) */
+.resonance-dashboard .db-no-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 44px 26px;
+}
+.resonance-dashboard .db-nr-title {
+  font-family: var(--font-serif), serif;
+  font-size: 24px;
+  letter-spacing: -0.015em;
+  color: var(--db-ink);
+}
+.resonance-dashboard .db-nr-sub {
+  font-size: 13px;
+  color: var(--db-ink-soft);
+  margin-bottom: 8px;
+}
+
+/* ── responsive ── */
+@media (max-width: 980px) {
+  .resonance-dashboard .db-results-shell {
+    grid-template-columns: 1fr;
+  }
+  .resonance-dashboard .db-filter-card {
+    position: relative;
+    top: 0;
+  }
+  .resonance-dashboard .db-tt-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .resonance-dashboard .db-pin {
+    grid-template-columns: auto 1fr;
+  }
+  .resonance-dashboard .db-pin .db-dial,
+  .resonance-dashboard .db-pin-acts {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+@media (max-width: 600px) {
+  .resonance-dashboard .db-res {
+    grid-template-columns: 44px 1fr;
+  }
+  .resonance-dashboard .db-res .db-dial,
+  .resonance-dashboard .db-res-acts {
+    grid-column: 2;
+    justify-self: start;
+    margin-top: 4px;
+  }
+  .resonance-dashboard .db-tt-grid {
+    grid-template-columns: 1fr;
+  }
+}
