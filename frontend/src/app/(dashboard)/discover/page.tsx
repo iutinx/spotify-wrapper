@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 
 /* ── match dial (SVG donut with centered number) ── */
@@ -193,7 +194,13 @@ const SORTS = ["MATCH", "RECENT", "A–Z"] as const;
 
 export default function DiscoverPage() {
   const { toast } = useToast();
+  const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const openProfile = (handle: string) => {
+    const userId = handle.replace("@", "");
+    router.push(`/discover/${userId}`);
+  };
   const trackRef = useRef<HTMLDivElement>(null);
 
   const [query, setQuery] = useState("");
@@ -416,7 +423,7 @@ export default function DiscoverPage() {
                   className="db-card db-pcard"
                   role="button"
                   tabIndex={0}
-                  onClick={() => toast(`Open ${p.name}`)}
+                  onClick={() => openProfile(p.handle)}
                 >
                   <span className="db-pc-corner">
                     <Dial pct={p.pct} size={38} />
@@ -441,7 +448,7 @@ export default function DiscoverPage() {
                       className="db-btn sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        toast(`Open ${p.name}`);
+                        openProfile(p.handle);
                       }}
                     >
                       View
@@ -465,7 +472,7 @@ export default function DiscoverPage() {
               </div>
               <div>
                 {FOF.map((f) => (
-                  <div key={f.name} className="db-fof-row" role="button" tabIndex={0} onClick={() => toast(`Open ${f.name}`)}>
+                  <div key={f.name} className="db-fof-row" role="button" tabIndex={0} onClick={() => openProfile(f.name.replace(" ", "").toLowerCase())}>
                     <Fava size={42} a={f.a} />
                     <div>
                       <div className="db-fof-name">{f.name}</div>
@@ -621,7 +628,7 @@ export default function DiscoverPage() {
             {pin ? (
               <>
                 {/* pinned top match */}
-                <div className="db-pin" role="button" tabIndex={0} onClick={() => toast(`Open ${pin.name}`)}>
+                <div className="db-pin" role="button" tabIndex={0} onClick={() => openProfile(pin.handle)}>
                   <span className="db-pin-tag">top match</span>
                   <Fava size={84} a={pin.a} />
                   <div className="db-pin-info">
@@ -646,7 +653,7 @@ export default function DiscoverPage() {
                       className="db-btn"
                       onClick={(e) => {
                         e.stopPropagation();
-                        toast(`Open ${pin.name}`);
+                        openProfile(pin.handle);
                       }}
                     >
                       View profile
@@ -658,7 +665,7 @@ export default function DiscoverPage() {
                 {rows.length > 0 && (
                   <div className="db-card db-result-list">
                     {rows.map((r) => (
-                      <div key={r.handle} className="db-res" role="button" tabIndex={0} onClick={() => toast(`Open ${r.name}`)}>
+                      <div key={r.handle} className="db-res" role="button" tabIndex={0} onClick={() => openProfile(r.handle)}>
                         <Fava size={44} a={r.a} />
                         <div>
                           <div className="db-res-name">{r.name}</div>
