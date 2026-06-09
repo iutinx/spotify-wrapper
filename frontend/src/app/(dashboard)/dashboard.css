@@ -2138,3 +2138,704 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PROFILE PAGE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* back button in eyebrow */
+.resonance-dashboard .db-profile-back {
+  background: none;
+  border: none;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--db-ink-faint);
+  padding: 0;
+  cursor: none;
+  transition: color 0.15s;
+}
+.resonance-dashboard .db-profile-back:hover {
+  color: var(--db-ink);
+}
+
+/* two-col grid: passport left, content right */
+.resonance-dashboard .db-profile-grid {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 24px;
+  align-items: start;
+  margin-top: 30px;
+}
+
+.resonance-dashboard .db-profile-right {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+/* ── PASSPORT CARD ── */
+.resonance-dashboard .db-passport {
+  padding: 30px 26px;
+  position: relative;
+  overflow: hidden;
+}
+.resonance-dashboard .db-passport::before {
+  content: "";
+  position: absolute;
+  top: -40%;
+  right: -40%;
+  width: 380px;
+  height: 380px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(29, 185, 84, 0.08), transparent 65%);
+  pointer-events: none;
+}
+
+.resonance-dashboard .db-pp-stamp {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 70px;
+  height: 70px;
+  border: 1.5px dashed rgba(29, 185, 84, 0.55);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: var(--font-mono), monospace;
+  font-size: 8.5px;
+  line-height: 1.25;
+  letter-spacing: 0.1em;
+  color: #138a3e;
+  transform: rotate(-8deg);
+  text-transform: uppercase;
+  padding: 6px;
+}
+.resonance-dashboard .db-pp-stamp b {
+  font-size: 9.5px;
+}
+
+.resonance-dashboard .db-pp-avatar {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  margin: 0 auto 16px;
+  background:
+    radial-gradient(circle at 36% 32%, #fff, transparent 28%),
+    conic-gradient(from 220deg, #d8d4c8, #b9c7c2, #e6dfd0, #cbd3cc, #d8d4c8);
+  border: 1px solid var(--db-hair);
+  box-shadow: 0 20px 50px -30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  position: relative;
+}
+.resonance-dashboard .db-pp-avatar::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px solid rgba(10, 10, 10, 0.06);
+}
+
+.resonance-dashboard .db-pp-name {
+  font-family: var(--font-serif), serif;
+  font-weight: 400;
+  font-size: 36px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  text-align: center;
+  margin: 0;
+  color: var(--db-ink);
+}
+.resonance-dashboard .db-pp-name em {
+  font-style: italic;
+  color: var(--db-ink-soft);
+}
+
+.resonance-dashboard .db-pp-handle {
+  text-align: center;
+  color: var(--db-ink-faint);
+  font-size: 13px;
+  margin-top: 6px;
+  font-family: var(--font-mono), monospace;
+  letter-spacing: 0.02em;
+}
+
+.resonance-dashboard .db-pp-bio {
+  color: var(--db-ink);
+  font-size: 13.5px;
+  line-height: 1.5;
+  margin: 16px auto 0;
+  text-align: center;
+  max-width: 30ch;
+}
+
+.resonance-dashboard .db-pp-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0;
+  margin: 22px 0 18px;
+  padding: 16px 0;
+  border-top: 1px solid var(--db-hair);
+  border-bottom: 1px solid var(--db-hair);
+}
+.resonance-dashboard .db-pp-meta > div {
+  text-align: center;
+  border-right: 1px solid var(--db-hair);
+  padding: 0 4px;
+}
+.resonance-dashboard .db-pp-meta > div:last-child {
+  border-right: none;
+}
+.resonance-dashboard .db-pp-v {
+  font-family: var(--font-serif), serif;
+  font-size: 28px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--db-ink);
+}
+.resonance-dashboard .db-pp-k {
+  font-family: var(--font-mono), monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--db-ink-faint);
+  margin-top: 6px;
+}
+
+.resonance-dashboard .db-pp-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.resonance-dashboard .db-pp-btn {
+  flex: 1;
+  min-width: 120px;
+  text-align: center;
+}
+
+.resonance-dashboard .db-pp-foot {
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid var(--db-hair);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono), monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  color: var(--db-ink-faint);
+  text-transform: uppercase;
+}
+.resonance-dashboard .db-pp-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #138a3e;
+}
+
+/* ── DNA card ── */
+.resonance-dashboard .db-dna-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px 28px;
+}
+.resonance-dashboard .db-dna-row {
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 6px;
+}
+.resonance-dashboard .db-dna-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.resonance-dashboard .db-dna-k {
+  font-size: 12.5px;
+  color: var(--db-ink);
+  font-weight: 500;
+}
+.resonance-dashboard .db-dna-desc {
+  font-size: 11.5px;
+  color: var(--db-ink-faint);
+  margin-top: 2px;
+}
+.resonance-dashboard .db-dna-v {
+  font-family: var(--font-serif), serif;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--db-ink);
+  letter-spacing: -0.02em;
+}
+.resonance-dashboard .db-dna-delta {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  color: var(--db-ink-faint);
+  margin-left: 6px;
+  letter-spacing: 0.04em;
+}
+.resonance-dashboard .db-dna-delta.up { color: var(--db-spotify); }
+.resonance-dashboard .db-dna-delta.down { color: #b5462f; }
+.resonance-dashboard .db-dna-track {
+  height: 6px;
+  background: var(--db-hair);
+  border-radius: 999px;
+  position: relative;
+  overflow: hidden;
+}
+.resonance-dashboard .db-dna-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--db-ink);
+  border-radius: 999px;
+}
+.resonance-dashboard .db-dna-fill.green { background: var(--db-spotify); }
+.resonance-dashboard .db-dna-fill.soft  { background: var(--db-ink-soft); }
+
+/* ── stat row ── */
+.resonance-dashboard .db-profile-stat-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 18px;
+}
+
+/* ── anthem + vibe ── */
+.resonance-dashboard .db-anthem-card {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.resonance-dashboard .db-anthem {
+  padding: 22px;
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 18px;
+  align-items: center;
+  background:
+    radial-gradient(circle at top right, rgba(29, 185, 84, 0.08), transparent 60%),
+    var(--db-card);
+  border: 1px solid var(--db-card-line);
+  border-radius: 22px;
+  backdrop-filter: blur(12px) saturate(1.05);
+  -webkit-backdrop-filter: blur(12px) saturate(1.05);
+  box-shadow: 0 30px 70px -50px rgba(0, 0, 0, 0.5);
+}
+.resonance-dashboard .db-anthem-cv {
+  width: 90px;
+  height: 90px;
+  border-radius: 14px;
+  background: linear-gradient(150deg, #d9b48c, #8a5a3a);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 18px 36px -20px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  position: relative;
+}
+.resonance-dashboard .db-anthem-cv::after {
+  content: "▶";
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 14px;
+}
+.resonance-dashboard .db-anthem-meta { min-width: 0; }
+.resonance-dashboard .db-anthem-tt {
+  font-family: var(--font-serif), serif;
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: -0.015em;
+  color: var(--db-ink);
+}
+.resonance-dashboard .db-anthem-at {
+  font-size: 13px;
+  color: var(--db-ink-soft);
+  margin-top: 4px;
+}
+.resonance-dashboard .db-anthem-why {
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--db-ink-faint);
+  margin-top: 10px;
+}
+.resonance-dashboard .db-vibe {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+}
+.resonance-dashboard .db-vibe-lead {
+  font-family: var(--font-serif), serif;
+  font-size: 28px;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--db-ink);
+}
+.resonance-dashboard .db-vibe-lead em {
+  font-style: italic;
+  color: var(--db-ink-soft);
+}
+
+/* ── badges grid ── */
+.resonance-dashboard .db-badges-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 14px;
+}
+
+.resonance-dashboard .db-badge {
+  min-height: 134px;
+  border: 1px solid var(--db-hair);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.55);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 10px 14px;
+  text-align: center;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  position: relative;
+  cursor: none;
+}
+.resonance-dashboard .db-badge:hover {
+  transform: translateY(-2px);
+  border-color: var(--db-ink-faint);
+  box-shadow: 0 18px 36px -22px rgba(0, 0, 0, 0.4);
+}
+.resonance-dashboard .db-badge-mk {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(
+    150deg,
+    hsl(var(--h, 140) 30% 92%),
+    hsl(calc(var(--h, 140) + 30) 38% 78%)
+  );
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--db-ink);
+  flex: 0 0 auto;
+}
+.resonance-dashboard .db-badge-mk svg {
+  display: block;
+  width: 22px;
+  height: 22px;
+}
+.resonance-dashboard .db-badge-name {
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--db-ink);
+}
+.resonance-dashboard .db-badge-tag {
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--db-ink-faint);
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+.resonance-dashboard .db-badge.locked {
+  border-style: dashed;
+  background: transparent;
+  box-shadow: none;
+}
+.resonance-dashboard .db-badge.locked:hover {
+  transform: none;
+}
+.resonance-dashboard .db-badge.locked .db-badge-mk {
+  background: var(--db-hair);
+  color: var(--db-ink-faint);
+}
+.resonance-dashboard .db-badge.locked .db-badge-mk svg {
+  width: 16px;
+  height: 16px;
+  opacity: 0.65;
+}
+.resonance-dashboard .db-badge.locked .db-badge-name,
+.resonance-dashboard .db-badge.locked .db-badge-tag {
+  color: var(--db-ink-faint);
+}
+
+/* big badge (modal) */
+.resonance-dashboard .db-badge-big {
+  min-height: auto;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 14px;
+  align-items: center;
+  text-align: left;
+  border-radius: 18px;
+  justify-content: start;
+}
+.resonance-dashboard .db-badge-big .db-badge-mk {
+  width: 56px;
+  height: 56px;
+}
+.resonance-dashboard .db-badge-big .db-badge-mk svg {
+  width: 26px;
+  height: 26px;
+}
+.resonance-dashboard .db-badge-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.resonance-dashboard .db-badge-big .db-badge-name {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+.resonance-dashboard .db-badge-desc {
+  font-size: 12px;
+  color: var(--db-ink-soft);
+  line-height: 1.4;
+}
+.resonance-dashboard .db-badge-meta {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  color: var(--db-ink-faint);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.resonance-dashboard .db-badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--db-ink-faint);
+  flex: 0 0 auto;
+}
+.resonance-dashboard .db-badge-dot.earned {
+  background: var(--db-spotify);
+  box-shadow: 0 0 0 3px rgba(29, 185, 84, 0.18);
+}
+.resonance-dashboard .db-badge-prog {
+  flex: 1;
+  height: 4px;
+  background: var(--db-hair);
+  border-radius: 999px;
+  overflow: hidden;
+  min-width: 60px;
+}
+.resonance-dashboard .db-badge-prog-fill {
+  height: 100%;
+  background: var(--db-ink);
+  border-radius: 999px;
+}
+.resonance-dashboard .db-badge-prog-n {
+  color: var(--db-ink-soft);
+}
+.resonance-dashboard .db-badge-big.locked {
+  background: rgba(0, 0, 0, 0.015);
+}
+.resonance-dashboard .db-badge-big.locked .db-badge-mk {
+  background: var(--db-hair);
+}
+.resonance-dashboard .db-badge-big.locked .db-badge-mk svg {
+  opacity: 0.55;
+}
+.resonance-dashboard .db-badge-big.locked .db-badge-name {
+  color: var(--db-ink-soft);
+}
+
+/* ── modal ── */
+.resonance-dashboard .db-modal-root {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.resonance-dashboard .db-modal-root.open {
+  pointer-events: auto;
+}
+.resonance-dashboard .db-modal-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(14px) saturate(1.1);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+  animation: db-fade-in 0.22s ease forwards;
+}
+.resonance-dashboard .db-modal-shell {
+  position: relative;
+  z-index: 1;
+  width: min(880px, calc(100vw - 48px));
+  max-height: min(86vh, 880px);
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px) saturate(1.1);
+  -webkit-backdrop-filter: blur(20px) saturate(1.1);
+  border: 1px solid var(--db-hair);
+  border-radius: 26px;
+  padding: 28px 32px 32px;
+  box-shadow:
+    0 50px 140px -40px rgba(0, 0, 0, 0.55),
+    0 12px 32px -16px rgba(0, 0, 0, 0.3);
+  animation: db-modal-in 0.24s cubic-bezier(0.22, 0.9, 0.3, 1.1) forwards;
+}
+.resonance-dashboard .db-modal-shell::-webkit-scrollbar { width: 8px; }
+.resonance-dashboard .db-modal-shell::-webkit-scrollbar-thumb {
+  background: var(--db-hair);
+  border-radius: 999px;
+}
+@keyframes db-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes db-modal-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+.resonance-dashboard .db-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+.resonance-dashboard .db-modal-x {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--db-hair);
+  background: rgba(255, 255, 255, 0.6);
+  cursor: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--db-ink);
+  transition: background 0.15s, transform 0.15s;
+  flex-shrink: 0;
+}
+.resonance-dashboard .db-modal-x:hover {
+  background: var(--db-ink);
+  color: var(--db-bg);
+  transform: rotate(90deg);
+}
+.resonance-dashboard .db-modal-x svg { width: 16px; height: 16px; }
+
+.resonance-dashboard .db-modal-progress {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 24px;
+  align-items: center;
+  padding: 18px 22px;
+  border: 1px solid var(--db-hair);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(29, 185, 84, 0.06), transparent 70%);
+  margin-bottom: 28px;
+}
+.resonance-dashboard .db-mp-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--font-serif), serif;
+  letter-spacing: -0.02em;
+}
+.resonance-dashboard .db-mp-n {
+  font-size: 54px;
+  line-height: 0.92;
+  color: var(--db-ink);
+}
+.resonance-dashboard .db-mp-d {
+  font-size: 22px;
+  color: var(--db-ink-soft);
+}
+.resonance-dashboard .db-mp-bar { min-width: 0; }
+.resonance-dashboard .db-mp-track {
+  height: 6px;
+  background: var(--db-hair);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.resonance-dashboard .db-mp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--db-ink), var(--db-spotify));
+  border-radius: 999px;
+  transition: width 0.6s cubic-bezier(0.22, 0.9, 0.3, 1.05);
+}
+.resonance-dashboard .db-mp-cap {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--db-ink-faint);
+}
+.resonance-dashboard .db-modal-section-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--db-ink-soft);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--db-hair);
+}
+.resonance-dashboard .db-big-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+/* responsive */
+@media (max-width: 980px) {
+  .resonance-dashboard .db-profile-grid {
+    grid-template-columns: 1fr;
+  }
+  .resonance-dashboard .db-profile-stat-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .resonance-dashboard .db-badges-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .resonance-dashboard .db-anthem-card {
+    grid-template-columns: 1fr;
+  }
+  .resonance-dashboard .db-dna-grid {
+    grid-template-columns: 1fr;
+  }
+  .resonance-dashboard .db-modal-progress {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .resonance-dashboard .db-big-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .resonance-dashboard .db-profile-stat-row {
+    grid-template-columns: 1fr;
+  }
+  .resonance-dashboard .db-badges-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .resonance-dashboard .db-modal-shell {
+    padding: 22px;
+    border-radius: 22px;
+  }
+}
