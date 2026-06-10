@@ -1,45 +1,67 @@
-# Spotify Social Music Platform
+# Resonance — Social Music Platform
 
-A full-stack social music platform that integrates with Spotify to provide real-time listening activity, social features, analytics, and music matching.
+A full-stack social music platform that integrates with Spotify to provide real-time listening activity, social features, analytics, music matching, and personalized user profiles.
 
 ## Features
 
 ### Real-Time Activity
-- **Live Currently Playing** - WebSocket-based real-time track sharing with 5-second polling
-- **Activity Privacy Controls** - Choose who sees your activity: `public`, `friends_only`, or `private`
-- **Activity History** - Persisted listening history with cursor pagination
+- **Live Currently Playing** — WebSocket-based real-time track sharing with 5-second polling
+- **Activity Privacy Controls** — Choose who sees your activity: `public`, `friends_only`, or `private`
+- **Activity History** — Persisted listening history with cursor pagination
+- **Background Sync** — Server-side periodic sync keeps listening history fresh even when no clients are connected
 
-### Social Features
-- **Friend System** - Send/receive friend requests, manage friendships
-- **Music Matching** - Weighted compatibility scoring (40% artists, 35% genres, 25% tracks)
-- **Leaderboards** - Track listening hours and streaks among friends
-- **Notifications** - Real-time notifications for friend requests and social activity
-- **User Blocking** - Block unwanted users
+### Social & Discovery
+- **Friend System** — Send/receive friend requests, manage friendships with cursor pagination
+- **Music Matching** — Weighted compatibility scoring (40% artists, 35% genres, 25% tracks) with detailed breakdown
+- **Leaderboards** — Track listening hours and streaks among friends
+- **User Discovery** — Search, filter, and browse users with match-score sliders and taste twins
+- **Notifications** — Real-time notifications for friend requests and social activity
+- **User Blocking** — Block unwanted users
 
 ### Analytics
-- **Top Tracks & Artists** - Short, medium, and long-term listening trends
-- **Rolling Window Stats** - Custom period analytics (28/90/180 days)
-- **Listening Statistics** - Total hours, streaks, and genre breakdowns
-- **Background Sync** - Automatic Spotify data synchronization
+- **Top Tracks & Artists** — Short, medium, and long-term listening trends from Spotify
+- **Rolling Window Stats** — Custom period analytics (28/90/180 days) computed from local listening history
+- **Listening Statistics** — Total hours, streaks, genre breakdowns, and new discoveries metric
+- **Playlists** — Fetch user's Spotify playlists
+- **Recently Played** — Auto-synced from Spotify with currently-playing capture for freshness
+
+### Profile & Customization
+- **User Profiles** — Passport card, listener DNA, top tracks anthem, badges grid, and modal view
+- **Custom Handles** — Unique @handle system (lowercased, enforced unique)
+- **Avatar Upload** — Custom avatar images (PNG/JPEG/WebP, max 2MB) with reset support
+- **Per-Feature Sharing** — Granular orbit-style privacy controls for each profile section (now playing, top artists, minutes, clock, match)
+- **Data Export** — Download all stored user data as JSON
+- **Account Management** — Clear listening history or permanently delete account
+
+### Platform
+- **RFC 7807 Error Responses** — Standardized machine-readable errors with stable codes, documentation links, and request IDs
+- **Rate Limiting** — 100/min, 1000/hour via SlowAPI + Redis
+- **JWT Authentication** — Access/refresh token rotation with Spotify OAuth
+- **WebSocket Test Interface** — Built-in `/ws-test` page for debugging real-time connections
 
 ## Tech Stack
 
 ### Backend
 - **Framework**: FastAPI 0.104.1
 - **Database**: PostgreSQL 15 (async SQLAlchemy 2.0)
-- **Cache**: Redis 7 (aioredis)
+- **Cache**: Redis 7
 - **Authentication**: JWT (PyJWT), OAuth 2.0 (Spotify)
-- **Rate Limiting**: SlowAPI + Redis (100/min, 1000/hour)
+- **Rate Limiting**: SlowAPI + Redis
 - **Migrations**: Alembic
+- **Linting/Formatting**: Ruff
 
 ### Frontend
-- **Framework**: Next.js (App Router)
-- **Language**: TypeScript
+- **Framework**: Next.js 15 (App Router) + React 19
+- **Language**: TypeScript (strict)
+- **Styling**: Tailwind v4 + shadcn/ui + hand-written route-scoped CSS
+- **State**: Zustand (client), @tanstack/react-query (server state)
+- **Charts**: Recharts
+- **Icons**: Lucide React
 
 ### DevOps
 - **Containerization**: Docker, Docker Compose
-- **Linting/Formatting**: Ruff
 - **Testing**: pytest, pytest-asyncio
+- **Local HTTPS**: mkcert (required for Spotify OAuth)
 
 ## Architecture
 
@@ -58,6 +80,8 @@ A full-stack social music platform that integrates with Spotify to provide real-
               │  5432)   │ │6379)│ │ (OAuth)  │
               └──────────┘ └─────┘ └──────────┘
 ```
+
+Monolithic FastAPI backend with async SQLAlchemy, Redis caching, and background sync loop. Next.js frontend with App Router, React Query for server state, and WebSocket for real-time activity.
 
 ## Getting Started
 
@@ -94,7 +118,6 @@ A full-stack social music platform that integrates with Spotify to provide real-
 
 5. **Generate SSL certificates** (required for Spotify OAuth):
    ```bash
-   cd ..
    mkcert 127.0.0.1 localhost
    mv 127.0.0.1+1.pem 127.0.0.1+1-key.pem misc/
    ```
@@ -102,7 +125,7 @@ A full-stack social music platform that integrates with Spotify to provide real-
 6. **Configure environment variables**:
    ```bash
    cp backend/.env.example backend/.env
-   # Edit backend/.env with your Spotify credentials
+   # Edit backend/.env with your Spotify credentials and absolute cert paths
    ```
 
 7. **Run database migrations**:
@@ -135,8 +158,7 @@ A full-stack social music platform that integrates with Spotify to provide real-
 
 3. **Configure environment**:
    ```bash
-   cp .env.example .env.local
-   # Edit .env.local with backend URL
+   cp .env.local.example .env.local  # if example exists, otherwise edit .env.local directly
    ```
 
 4. **Start development server**:
@@ -158,7 +180,6 @@ A full-stack social music platform that integrates with Spotify to provide real-
 
 Add these to your Spotify app's redirect URIs:
 - `https://127.0.0.1:5000/auth/callback` (primary)
-- `https://127.0.0.1:5000/api/auth/spotify-login` (alternative)
 
 ### 3. Important Notes
 
@@ -166,8 +187,8 @@ Add these to your Spotify app's redirect URIs:
 - **HTTPS required** — Spotify requires HTTPS for redirect URIs
 - **Certificate paths** in `.env` must be absolute paths:
   ```env
-  SSL_CERTFILE=/Users/iuteen/Documents/40 Projects /spotify-wrapper/misc/127.0.0.1+1.pem
-  SSL_KEYFILE=/Users/iuteen/Documents/40 Projects /spotify-wrapper/misc/127.0.0.1+1-key.pem
+  SSL_CERTFILE=/absolute/path/to/misc/127.0.0.1+1.pem
+  SSL_KEYFILE=/absolute/path/to/misc/127.0.0.1+1-key.pem
   ```
 
 ### 4. Required Scopes
@@ -191,9 +212,6 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=30
 
 # Database
-POSTGRES_USER=spotify_user
-POSTGRES_PASSWORD=spotify_password
-POSTGRES_DB=spotify_db
 DATABASE_URL=postgresql+asyncpg://spotify_user:spotify_password@localhost:5432/spotify_db
 
 # Redis
@@ -208,16 +226,38 @@ SPOTIFY_REDIRECT_URI=https://127.0.0.1:5000/auth/callback
 FRONTEND_URL=http://localhost:3000
 FRONTEND_REDIRECT_URL=http://localhost:3000
 
+# Background Sync
+BACKGROUND_SYNC_ENABLED=True
+BACKGROUND_SYNC_INTERVAL_SECONDS=300
+
 # SSL (absolute paths required)
-SSL_CERTFILE=/absolute/path/to/127.0.0.1+1.pem
-SSL_KEYFILE=/absolute/path/to/127.0.0.1+1-key.pem
+SSL_CERTFILE=/absolute/path/to/misc/127.0.0.1+1.pem
+SSL_KEYFILE=/absolute/path/to/misc/127.0.0.1+1-key.pem
+
+# Uploads
+UPLOAD_DIR=/absolute/path/to/backend/uploads
+MEDIA_URL=/media
 ```
 
 ### Frontend (.env.local)
 
 ```env
 NEXT_PUBLIC_API_URL=https://127.0.0.1:5000
+NEXT_PUBLIC_WS_URL=wss://127.0.0.1:5000
 ```
+
+## Frontend Pages
+
+| Route | Description |
+|---|---|
+| `/login` | Spotify OAuth login page |
+| `/callback` | OAuth callback handler |
+| `/dashboard` | Main dashboard with turntable carousel, live feed, and quick stats |
+| `/analytics` | Listening stats — top tracks/artists wheel, genre breakdown, hours, streaks, discoveries |
+| `/social` | Social hub — friends leaderboard, closest music match, live listening feed |
+| `/discover` | User discovery — taste twins, search, filter sidebar, match-score slider |
+| `/settings` | Settings — orbit privacy controls, profile editing, avatar upload, account management |
+| `/profile/[id]` | User profile — passport card, listener DNA bars, badges, anthem, modal view |
 
 ## API Endpoints
 
@@ -233,21 +273,28 @@ NEXT_PUBLIC_API_URL=https://127.0.0.1:5000
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/users/me` | Get current user profile |
-| GET | `/api/users/{user_id}` | Get user by ID |
+| GET | `/api/users/{user_id}` | Get user by ID (public) |
+| GET | `/api/users/{user_id}/shared` | Get user's shared profile (per-feature visibility filtered) |
 | GET | `/api/users/me/currently-playing` | Get currently playing track |
-| GET | `/api/users/me/activity-history` | Get listening history |
+| GET | `/api/users/me/activity-history` | Get listening history (cursor pagination) |
 | PUT | `/api/users/me/activity-privacy` | Update activity visibility |
-| PUT | `/api/users/{user_id}/profile` | Update user profile |
+| PUT | `/api/users/{user_id}/profile` | Update user profile (handle, bio, genres, artists) |
+| POST | `/api/users/me/avatar` | Upload custom avatar (PNG/JPEG/WebP, max 2MB) |
+| POST | `/api/users/me/avatar/reset` | Clear custom avatar |
+| GET | `/api/users/me/export` | Export all user data as JSON |
+| DELETE | `/api/users/me/listening-history` | Clear listening history |
+| DELETE | `/api/users/me` | Permanently delete account |
 
 ### Analytics (`/api/analytics/*`)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/analytics/top-tracks` | Get top tracks |
-| GET | `/api/analytics/top-artists` | Get top artists |
-| GET | `/api/analytics/stats` | Get listening statistics |
-| GET | `/api/analytics/recently-played` | Get recently played tracks |
-| POST | `/api/analytics/sync` | Sync data from Spotify |
-| POST | `/api/analytics/rolling-window` | Get custom period analytics |
+| GET | `/api/analytics/top-tracks` | Get top tracks (short/medium/long term) |
+| GET | `/api/analytics/top-artists` | Get top artists (short/medium/long term) |
+| GET | `/api/analytics/stats` | Get listening statistics (auto-syncs from Spotify) |
+| GET | `/api/analytics/recently-played` | Get recently played tracks (auto-syncs) |
+| GET | `/api/analytics/playlists` | Get user's Spotify playlists |
+| POST | `/api/analytics/sync` | Sync data from Spotify (inline) |
+| POST | `/api/analytics/rolling-window` | Custom period analytics (body: `{ days: 28|90|180 }`) |
 
 ### Social (`/api/social/*`)
 | Method | Endpoint | Description |
@@ -256,20 +303,27 @@ NEXT_PUBLIC_API_URL=https://127.0.0.1:5000
 | PUT | `/api/social/friends/{id}/accept` | Accept friend request |
 | PUT | `/api/social/friends/{id}/reject` | Reject friend request |
 | DELETE | `/api/social/friends/{id}` | Remove friendship |
-| GET | `/api/social/friends` | Get friends list |
-| GET | `/api/social/friends/pending` | Get pending requests |
+| GET | `/api/social/friends` | Get friends list (cursor pagination) |
+| GET | `/api/social/friends/pending` | Get pending requests (cursor pagination) |
 | POST | `/api/social/block/{user_id}` | Block user |
-| GET | `/api/social/notifications` | Get notifications |
+| GET | `/api/social/notifications` | Get notifications (cursor pagination) |
 | PUT | `/api/social/notifications/{id}/read` | Mark notification read |
-| GET | `/api/social/search` | Search users |
-| GET | `/api/social/match/{user_id}` | Get music compatibility |
+| GET | `/api/social/search` | Search users by display name |
+| GET | `/api/social/match/{user_id}` | Get music compatibility score |
 | GET | `/api/social/leaderboard` | Get friends leaderboard |
 
-### Real-Time (`/ws/*`)
+### Real-Time
 | Endpoint | Description |
 |----------|-------------|
-| `GET /ws/realtime` | WebSocket for real-time activity |
+| `GET /ws/realtime` | WebSocket for real-time activity (auth via JSON message) |
 | `GET /ws-test` | WebSocket test interface |
+
+### Other
+| Endpoint | Description |
+|----------|-------------|
+| `GET /health` | Health check |
+| `GET /` | API info |
+| `GET /media/avatars/{filename}` | Served avatar images |
 
 ## Development
 
@@ -286,6 +340,14 @@ pytest tests/
 cd backend
 ruff check app/ --fix
 ruff format app/
+```
+
+### Frontend Type Check & Lint
+
+```bash
+cd frontend
+npm run type-check   # tsc --noEmit (the real type gate)
+npm run lint         # eslint
 ```
 
 ### Database Migrations
@@ -305,66 +367,11 @@ alembic downgrade -1
 
 ### Config Changes
 
-**Important**: The `get_settings()` function uses `@lru_cache`. After changing `.env`:
-```bash
-# Restart the server for config changes to take effect
-```
+**Important**: The `get_settings()` function uses `@lru_cache`. After changing `.env`, restart the server for config changes to take effect.
 
-## Production Deployment
+### Alembic Note
 
-### Backend
-
-1. **Build Docker image**:
-   ```bash
-   docker build -t spotify-social-backend ./backend
-   ```
-
-2. **Set production environment variables**:
-   - Use strong `SECRET_KEY`
-   - Set `DEBUG=False`
-   - Configure production database URL
-   - Update `FRONTEND_URL` to production domain
-
-3. **Deploy with Docker Compose**:
-   ```bash
-   docker compose -f docker-compose.prod.yml up -d
-   ```
-
-4. **Run migrations**:
-   ```bash
-   docker compose exec backend alembic upgrade head
-   ```
-
-### Frontend
-
-1. **Build for production**:
-   ```bash
-   npm run build
-   ```
-
-2. **Start production server**:
-   ```bash
-   npm start
-   ```
-
-3. **Or deploy to Vercel**:
-   ```bash
-   vercel deploy
-   ```
-
-### SSL/TLS
-
-For production, use proper SSL certificates:
-- Use Let's Encrypt or similar for production domains
-- Update `SSL_CERTFILE` and `SSL_KEYFILE` paths in `.env`
-
-### Security Considerations
-
-- Enable rate limiting (default: 100/min, 1000/hour)
-- Use HTTPS for all endpoints
-- Rotate `SECRET_KEY` periodically
-- Monitor Redis for rate limit violations
-- Keep Spotify tokens secure and refresh as needed
+`alembic.ini` has a hardcoded DB URL with a sync engine (`postgresql://`). Keep it in sync with `.env` manually when DB config changes. The app uses an async engine (`postgresql+asyncpg://`).
 
 ## Project Structure
 
@@ -372,46 +379,74 @@ For production, use proper SSL certificates:
 spotify-wrapper/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py                 # FastAPI app, lifespan, routes
+│   │   ├── main.py                     # FastAPI app, lifespan, routes, /auth/callback, /health, /ws-test
 │   │   ├── core/
-│   │   │   ├── config.py           # Settings via pydantic-settings
-│   │   │   ├── security.py         # JWT create/verify, password hashing
-│   │   │   └── constants.py        # Enums + cache TTLs
-│   │   ├── models/                 # SQLAlchemy models
-│   │   │   ├── users.py            # User, UserProfile, UserActivity
-│   │   │   ├── social.py           # Friendship, Notification, Block
-│   │   │   └── analytics.py        # ListeningHistory, TopTrack, TopArtist
-│   │   ├── schemas/                # Pydantic request/response schemas
-│   │   ├── api/                    # Route handlers
-│   │   │   ├── auth.py             # /api/auth/*
-│   │   │   ├── user.py             # /api/users/*
-│   │   │   ├── analytics.py        # /api/analytics/*
-│   │   │   ├── social.py           # /api/social/*
-│   │   │   └── realtime.py         # /ws/realtime
-│   │   ├── services/               # Business logic
-│   │   │   ├── spotify_service.py  # Spotify API interactions
-│   │   │   ├── user_service.py     # User operations
-│   │   │   ├── analytics_service.py# Analytics & history
-│   │   │   ├── social_service.py   # Friendships, notifications
-│   │   │   ├── cache_service.py    # Redis operations
-│   │   │   ├── matching_service.py # Music compatibility
-│   │   │   ├── token_refresh_service.py  # JWT refresh
-│   │   │   ├── oauth_state.py      # OAuth state management
-│   │   │   ├── websocket_manager.py# WebSocket connections
-│   │   │   └── currently_playing_service.py  # Activity tracking
-│   │   └── database.py             # SQLAlchemy setup
-│   ├── migrations/                 # Alembic migrations
-│   ├── docker-compose.yml          # PostgreSQL + Redis
-│   ├── Dockerfile
+│   │   │   ├── config.py               # Settings via pydantic-settings
+│   │   │   ├── security.py             # JWT create/verify, get_current_user
+│   │   │   ├── constants.py            # Enums + cache TTLs
+│   │   │   └── errors.py               # RFC 7807 error response helpers
+│   │   ├── models/                     # SQLAlchemy models
+│   │   │   ├── users.py                # User, UserProfile, UserActivity, UserActivityHistory
+│   │   │   ├── analytics.py            # ListeningHistory, TopTrack, TopArtist
+│   │   │   └── social.py               # Friendship, Notification, Block
+│   │   ├── schemas/                    # Pydantic request/response schemas
+│   │   │   ├── auth.py
+│   │   │   ├── user.py
+│   │   │   ├── analytics.py
+│   │   │   ├── social.py
+│   │   │   ├── realtime.py
+│   │   │   └── errors.py               # ErrorResponse, FieldError, error code registry
+│   │   ├── api/                        # Route handlers
+│   │   │   ├── auth.py                 # /api/auth/*
+│   │   │   ├── user.py                 # /api/users/*
+│   │   │   ├── analytics.py            # /api/analytics/*
+│   │   │   ├── social.py               # /api/social/*
+│   │   │   └── realtime.py             # /ws/realtime
+│   │   ├── services/                   # Business logic
+│   │   │   ├── spotify_service.py      # Spotify API interactions
+│   │   │   ├── user_service.py         # User operations
+│   │   │   ├── analytics_service.py    # Analytics & history
+│   │   │   ├── social_service.py       # Friendships, notifications
+│   │   │   ├── cache_service.py        # Redis operations
+│   │   │   ├── matching_service.py     # Music compatibility + leaderboard
+│   │   │   ├── token_refresh_service.py# JWT refresh
+│   │   │   ├── oauth_state.py          # OAuth state management
+│   │   │   ├── websocket_manager.py    # WebSocket connections
+│   │   │   ├── currently_playing_service.py  # Activity tracking
+│   │   │   ├── background_sync_service.py    # Server-side periodic sync
+│   │   │   └── sharing.py              # Per-feature sharing logic
+│   │   ├── middleware/
+│   │   │   └── rate_limit.py           # Rate limiting middleware
+│   │   └── database.py                 # Sync + async SQLAlchemy engines
+│   ├── migrations/                     # Alembic migrations
+│   ├── docker-compose.yml              # PostgreSQL + Redis
 │   ├── requirements.txt
 │   └── .env.example
 ├── frontend/
-│   ├── app/                        # Next.js app router
-│   ├── components/
-│   ├── public/
-│   └── package.json
-├── misc/                           # SSL certificates
-├── AGENTS.md                       # Agent instructions
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── (auth)/                 # Login, callback routes
+│   │   │   ├── (dashboard)/            # Dashboard, analytics, social, discover, settings
+│   │   │   │   ├── analytics/
+│   │   │   │   ├── discover/
+│   │   │   │   ├── settings/
+│   │   │   │   ├── social/
+│   │   │   │   └── layout.tsx
+│   │   │   ├── layout.tsx
+│   │   │   ├── page.tsx                # Landing page
+│   │   │   ├── globals.css
+│   │   │   └── landing.css
+│   │   ├── components/                 # UI components
+│   │   │   ├── ui/                     # shadcn generated primitives
+│   │   │   └── dashboard/              # Turntable, match dial, etc.
+│   │   ├── hooks/                      # React Query hooks
+│   │   ├── lib/                        # API client, utilities
+│   │   └── types/                      # TypeScript type definitions
+│   ├── .env.local
+│   ├── package.json
+│   └── next.config.ts
+├── misc/                               # SSL certificates
+├── AGENTS.md                           # Agent instructions
 └── README.md
 ```
 
@@ -420,15 +455,19 @@ spotify-wrapper/
 ### Port 5000 Conflict (macOS)
 macOS ControlCenter (AirPlay Receiver) may bind port 5000. Solutions:
 1. Turn off AirPlay Receiver: System Settings → AirDrop & Handoff → AirPlay Receiver
-2. Or use alternate port: `uvicorn app.main:app --port 8443`
+2. Or use alternate port: `uvicorn app.main:app --port 8443` and update `.env` + Spotify Dashboard redirect URI
 
 ### OAuth Flow
 - Must re-authenticate to grant `user-read-currently-playing` scope
 - Use `https://127.0.0.1:5000/api/auth/spotify-login` for full scope request
+- Spotify blocks `localhost` — always use `127.0.0.1`
+
+### SSR/LocalStorage
+Frontend has known SSR/localStorage fragility on `/analytics`. Browser-only code is SSR-guarded.
 
 ## License
 
-Personal project - not for commercial use.
+Personal project — not for commercial use.
 
 ## Acknowledgments
 
@@ -436,3 +475,4 @@ Personal project - not for commercial use.
 - [FastAPI](https://fastapi.tiangolo.com/)
 - [Next.js](https://nextjs.org/)
 - [SQLAlchemy](https://www.sqlalchemy.org/)
+- [shadcn/ui](https://ui.shadcn.com/)
