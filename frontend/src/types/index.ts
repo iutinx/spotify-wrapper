@@ -274,6 +274,28 @@ export interface TopGenre {
   count: number;
 }
 
+export interface DirectMessage {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  content: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface Conversation {
+  id: string;
+  other_user: {
+    id: string;
+    display_name: string | null;
+    profile_image_url: string | null;
+    bio?: string | null;
+  };
+  last_message: DirectMessage | null;
+  unread_count: number;
+  created_at: string;
+}
+
 export interface ListeningStatsResponse {
   total_hours_listened: number;
   listening_streak: number;

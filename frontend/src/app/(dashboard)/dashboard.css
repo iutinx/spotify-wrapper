@@ -2839,3 +2839,375 @@
     border-radius: 22px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MESSAGES PAGE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.resonance-dashboard .dm-page {
+  display: flex;
+  flex-direction: column;
+}
+
+/* two-col shell: sidebar | thread */
+.resonance-dashboard .dm-shell {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 18px;
+  align-items: stretch;
+  height: calc(100vh - 270px);
+  min-height: 480px;
+}
+
+/* ── sidebar ── */
+.resonance-dashboard .dm-sidebar {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  height: 100%;
+}
+.resonance-dashboard .dm-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--db-hair);
+}
+.resonance-dashboard .dm-unread-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--db-spotify);
+}
+.resonance-dashboard .dm-sidebar-empty {
+  padding: 24px 18px;
+  font-size: 13px;
+  color: var(--db-ink-faint);
+  text-align: center;
+}
+.resonance-dashboard .dm-conv-list {
+  flex: 1;
+  overflow-y: auto;
+}
+.resonance-dashboard .dm-conv-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 18px;
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--db-hair);
+  text-align: left;
+  cursor: none;
+  transition: background 0.12s;
+}
+.resonance-dashboard .dm-conv-row:last-child {
+  border-bottom: none;
+}
+.resonance-dashboard .dm-conv-row:hover {
+  background: rgba(0, 0, 0, 0.025);
+}
+.resonance-dashboard .dm-conv-row.active {
+  background: rgba(10, 10, 10, 0.04);
+}
+.resonance-dashboard .dm-conv-av {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+}
+.resonance-dashboard .dm-conv-meta {
+  flex: 1;
+  min-width: 0;
+}
+.resonance-dashboard .dm-conv-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--db-ink);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  line-height: 1.2;
+}
+.resonance-dashboard .dm-conv-preview {
+  font-size: 12px;
+  color: var(--db-ink-faint);
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.resonance-dashboard .dm-conv-time {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  color: var(--db-ink-faint);
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+.resonance-dashboard .dm-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--db-spotify);
+  color: #fff;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 0 5px;
+}
+
+/* ── thread ── */
+.resonance-dashboard .dm-thread {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  height: 100%;
+}
+.resonance-dashboard .dm-thread-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--db-hair);
+  flex-shrink: 0;
+}
+.resonance-dashboard .dm-thread-av {
+  flex-shrink: 0;
+}
+.resonance-dashboard .dm-thread-name {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--db-ink);
+}
+
+/* scrollable message area */
+.resonance-dashboard .dm-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.resonance-dashboard .dm-thread-empty {
+  text-align: center;
+  color: var(--db-ink-faint);
+  font-size: 14px;
+  margin: auto;
+}
+
+/* message bubbles */
+.resonance-dashboard .dm-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 72%;
+}
+.resonance-dashboard .dm-msg.mine {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+.resonance-dashboard .dm-msg.theirs {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+.resonance-dashboard .dm-bubble {
+  padding: 10px 15px;
+  border-radius: 20px;
+  font-size: 14px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+.resonance-dashboard .dm-msg.mine .dm-bubble {
+  background: var(--db-ink);
+  color: #fff;
+  border-bottom-right-radius: 6px;
+}
+.resonance-dashboard .dm-msg.theirs .dm-bubble {
+  background: var(--db-hair);
+  color: var(--db-ink);
+  border-bottom-left-radius: 6px;
+}
+.resonance-dashboard .dm-msg-time {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  color: var(--db-ink-faint);
+}
+
+/* composer */
+.resonance-dashboard .dm-composer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--db-hair);
+  flex-shrink: 0;
+}
+.resonance-dashboard .dm-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--db-hair);
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-family: var(--font-sans), sans-serif;
+  color: var(--db-ink);
+  background: rgba(255, 255, 255, 0.6);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.resonance-dashboard .dm-input:focus {
+  border-color: var(--db-ink);
+}
+.resonance-dashboard .dm-send.disabled {
+  opacity: 0.4;
+}
+
+/* ── empty thread state ── */
+.resonance-dashboard .dm-empty-thread {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 40px;
+  text-align: center;
+}
+.resonance-dashboard .dm-empty-icon {
+  font-size: 36px;
+  opacity: 0.25;
+  margin-bottom: 4px;
+}
+.resonance-dashboard .dm-empty-title {
+  font-family: var(--font-serif), serif;
+  font-size: 24px;
+  letter-spacing: -0.015em;
+  color: var(--db-ink);
+}
+.resonance-dashboard .dm-empty-sub {
+  font-size: 13px;
+  color: var(--db-ink-soft);
+  max-width: 28ch;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+/* ── new conv overlay ── */
+.resonance-dashboard .dm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(10, 10, 10, 0.25);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.resonance-dashboard .dm-sheet {
+  width: 420px;
+  max-width: calc(100vw - 32px);
+  border-radius: 24px;
+  overflow: hidden;
+  padding: 0;
+}
+.resonance-dashboard .dm-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--db-hair);
+}
+.resonance-dashboard .dm-close {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: var(--db-ink-faint);
+  cursor: none;
+  line-height: 1;
+  transition: color 0.15s;
+}
+.resonance-dashboard .dm-close:hover {
+  color: var(--db-ink);
+}
+.resonance-dashboard .dm-sheet-search {
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--db-hair);
+}
+.resonance-dashboard .dm-sheet-search input {
+  width: 100%;
+  border: 1px solid var(--db-hair);
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-family: var(--font-sans), sans-serif;
+  color: var(--db-ink);
+  background: var(--db-bg);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.resonance-dashboard .dm-sheet-search input:focus {
+  border-color: var(--db-ink);
+}
+.resonance-dashboard .dm-sheet-results {
+  max-height: 320px;
+  overflow-y: auto;
+}
+.resonance-dashboard .dm-sheet-loading {
+  padding: 16px 22px;
+  font-size: 13px;
+  color: var(--db-ink-faint);
+  text-align: center;
+}
+.resonance-dashboard .dm-sheet-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 22px;
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--db-hair);
+  text-align: left;
+  cursor: none;
+  transition: background 0.12s;
+}
+.resonance-dashboard .dm-sheet-row:last-child {
+  border-bottom: none;
+}
+.resonance-dashboard .dm-sheet-row:hover {
+  background: rgba(0, 0, 0, 0.025);
+}
+.resonance-dashboard .dm-sheet-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--db-ink);
+}
+
+/* ── responsive ── */
+@media (max-width: 980px) {
+  .resonance-dashboard .dm-shell {
+    grid-template-columns: 260px 1fr;
+    height: calc(100vh - 290px);
+  }
+}
+@media (max-width: 700px) {
+  .resonance-dashboard .dm-shell {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .resonance-dashboard .dm-sidebar {
+    height: 260px;
+  }
+  .resonance-dashboard .dm-thread {
+    height: calc(100vh - 300px);
+    min-height: 400px;
+  }
+}

@@ -55,6 +55,7 @@ export default function DashboardLayout({
     { label: "Dashboard", href: "/analytics" },
     { label: "Discover", href: "/discover" },
     { label: "Friends", href: "/social" },
+    { label: "Messages", href: "/messages" },
     { label: "Settings", href: "/settings" },
   ];
 
