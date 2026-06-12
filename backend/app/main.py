@@ -15,7 +15,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api import analytics, auth, realtime, social, user
+from app.api import analytics, auth, messages, realtime, social, user
 from app.core.config import get_settings
 from app.core.errors import (
     create_authentication_error,
@@ -210,6 +210,7 @@ app.include_router(auth.router)
 app.include_router(user.router)
 app.include_router(analytics.router)
 app.include_router(social.router)
+app.include_router(messages.router)
 app.include_router(realtime.router)
 
 # serve uploaded media (avatars). dir must exist at mount time.

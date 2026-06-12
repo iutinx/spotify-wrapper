@@ -107,3 +107,34 @@ class PaginatedUserSearchResponse(BaseModel):
 
     items: list[UserSearchResponse]
     pagination: PaginationInfo
+
+
+class MessageCreate(BaseModel):
+    content: str = Field(min_length=1, max_length=2000)
+
+
+class MessageResponse(BaseModel):
+    id: UUID
+    conversation_id: UUID
+    sender_id: UUID
+    content: str
+    is_read: bool
+    created_at: datetime
+
+
+class ConversationResponse(BaseModel):
+    id: UUID
+    other_user: UserSearchResponse
+    last_message: Optional[MessageResponse] = None
+    unread_count: int = 0
+    created_at: datetime
+
+
+class PaginatedMessagesResponse(BaseModel):
+    items: list[MessageResponse]
+    pagination: PaginationInfo
+
+
+class PaginatedConversationsResponse(BaseModel):
+    items: list[ConversationResponse]
+    pagination: PaginationInfo

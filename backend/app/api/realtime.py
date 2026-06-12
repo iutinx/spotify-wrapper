@@ -117,6 +117,49 @@ async def realtime_websocket(websocket: WebSocket):
                 elif msg_type == "ping":
                     await websocket.send_json({"type": "pong"})
 
+                elif msg_type == "send_message":
+                    payload = message.get("payload", {})
+                    recipient_id_str = payload.get("recipient_id")
+                    content = (payload.get("content") or "").strip()
+                    if recipient_id_str and content:
+                        try:
+                            from uuid import UUID as _UUID
+
+                            from app.services.messaging_service import MessagingService
+
+                            recipient_id = _UUID(recipient_id_str)
+                            async with AsyncSessionLocal() as msg_session:
+                                svc = MessagingService(msg_session)
+                                conv = await svc.get_or_create_conversation(user_id, recipient_id)
+                                msg = await svc.send_message(conv.id, user_id, content)
+
+                            ws_payload = {
+                                "type": "new_message",
+                                "payload": {
+                                    "message_id": str(msg.id),
+                                    "conversation_id": str(conv.id),
+                                    "sender_id": str(user_id),
+                                    "content": msg.content,
+                                    "created_at": msg.created_at.isoformat(),
+                                },
+                            }
+                            await connection_manager.send_to_user(recipient_id, ws_payload)
+                            await websocket.send_json(
+                                {
+                                    "type": "message_sent",
+                                    "payload": {
+                                        "message_id": str(msg.id),
+                                        "conversation_id": str(conv.id),
+                                        "created_at": msg.created_at.isoformat(),
+                                    },
+                                }
+                            )
+                        except Exception as e:
+                            logger.error(f"failed to send ws message: {e}")
+                            await websocket.send_json(
+                                {"type": "error", "payload": {"message": "failed to send message"}}
+                            )
+
                 else:
                     logger.warning(f"unknown websocket message type: {msg_type}")
 
