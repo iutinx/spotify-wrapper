@@ -69,6 +69,14 @@ const TASTE_TWINS = [
   { name: "Iris D.", handle: "@irisd_", pct: 89, a: "160deg", why: (<><b>11</b> shared · same <b>lo-fi</b> hours</>) },
   { name: "Jonah B.", handle: "@jonahbb", pct: 86, a: "240deg", why: (<><b>9</b> shared · loves <b>Kite Season</b></>) },
   { name: "Luca R.", handle: "@lucalist", pct: 82, a: "320deg", why: (<><b>8</b> shared · same <b>ambient</b> niche</>) },
+  { name: "Ava K.", handle: "@avak", pct: 81, a: "110deg", why: (<><b>7</b> shared · <b>dream-pop</b> overlap</>) },
+  { name: "Devin L.", handle: "@devinl", pct: 79, a: "200deg", why: (<><b>7</b> shared · late-night listener</>) },
+  { name: "Mona T.", handle: "@monalin", pct: 77, a: "280deg", why: (<><b>6</b> shared · <b>shoegaze</b> fan</>) },
+  { name: "Priya N.", handle: "@priyan", pct: 75, a: "30deg", why: (<><b>6</b> shared · same <b>indie</b> circle</>) },
+  { name: "Sam H.", handle: "@samh", pct: 73, a: "190deg", why: (<><b>5</b> shared · <b>folk</b> enthusiast</>) },
+  { name: "Noor A.", handle: "@noora", pct: 71, a: "260deg", why: (<><b>5</b> shared · <b>neo-soul</b> hours</>) },
+  { name: "Ellis W.", handle: "@ellisw", pct: 69, a: "340deg", why: (<><b>4</b> shared · <b>slowcore</b> niche</>) },
+  { name: "Remy J.", handle: "@remyj", pct: 67, a: "70deg", why: (<><b>4</b> shared · <b>bedroom-pop</b> fan</>) },
 ];
 
 const FOF = [
@@ -76,6 +84,10 @@ const FOF = [
   { name: "Theo P.", pct: 72, a: "140deg", why: (<>followed by <b>Mona</b>, <b>Priya</b></>) },
   { name: "Sasha I.", pct: 69, a: "220deg", why: (<>followed by <b>Sam</b>, <b>Noor</b> +3</>) },
   { name: "Marin C.", pct: 65, a: "20deg", why: (<>followed by <b>Ava</b>, <b>Devin</b></>) },
+  { name: "Quinn R.", pct: 62, a: "300deg", why: (<>followed by <b>Wren</b>, <b>Luca</b></>) },
+  { name: "Harper S.", pct: 58, a: "170deg", why: (<>followed by <b>Jonah</b>, <b>Iris</b> +1</>) },
+  { name: "Felix M.", pct: 55, a: "250deg", why: (<>followed by <b>Pearl</b>, <b>Theo</b></>) },
+  { name: "Zara K.", pct: 52, a: "90deg", why: (<>followed by <b>Sasha</b>, <b>Marin</b></>) },
 ];
 
 const PULSE = [
@@ -412,11 +424,8 @@ export default function DiscoverPage() {
               <div className="db-h-title">
                 Taste twins <em>— people whose listening looks like yours</em>
               </div>
-              <button className="db-see" onClick={() => toast("See all 24 taste twins")}>
-                see all 24 ▸
-              </button>
             </div>
-            <div className="db-tt-grid">
+            <div className="db-tt-scroll">
               {TASTE_TWINS.map((p) => (
                 <div
                   key={p.handle}
@@ -466,11 +475,8 @@ export default function DiscoverPage() {
                 <div className="db-h-title">
                   Through your friends <em>— mutuals you don&apos;t follow yet</em>
                 </div>
-                <button className="db-see" onClick={() => toast("See all")}>
-                  see all ▸
-                </button>
               </div>
-              <div>
+              <div className="db-fof-scroll">
                 {FOF.map((f) => (
                   <div key={f.name} className="db-fof-row" role="button" tabIndex={0} onClick={() => openProfile(f.name.replace(" ", "").toLowerCase())}>
                     <Fava size={42} a={f.a} />

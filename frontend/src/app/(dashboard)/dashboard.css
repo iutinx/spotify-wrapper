@@ -1655,6 +1655,18 @@
   grid-template-columns: repeat(4, 1fr);
   gap: 14px;
 }
+
+/* taste twins horizontal scroll */
+.resonance-dashboard .db-tt-scroll {
+  display: flex;
+  overflow-x: auto;
+  gap: 14px;
+  padding-bottom: 8px;
+}
+.resonance-dashboard .db-tt-scroll .db-pcard {
+  min-width: 260px;
+  flex-shrink: 0;
+}
 .resonance-dashboard .db-pcard {
   padding: 18px 16px 16px;
   display: flex;
@@ -1715,6 +1727,12 @@
 }
 .resonance-dashboard .db-fof-row:last-child {
   border-bottom: none;
+}
+
+/* friends-of-friends vertical scroll */
+.resonance-dashboard .db-fof-scroll {
+  max-height: 320px;
+  overflow-y: auto;
 }
 .resonance-dashboard .db-fof-name {
   font-size: 14px;
@@ -2115,6 +2133,9 @@
   .resonance-dashboard .db-tt-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+  .resonance-dashboard .db-tt-scroll .db-pcard {
+    min-width: 240px;
+  }
   .resonance-dashboard .db-pin {
     grid-template-columns: auto 1fr;
   }
@@ -2136,6 +2157,9 @@
   }
   .resonance-dashboard .db-tt-grid {
     grid-template-columns: 1fr;
+  }
+  .resonance-dashboard .db-tt-scroll .db-pcard {
+    min-width: 220px;
   }
 }
 
