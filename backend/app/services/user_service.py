@@ -60,7 +60,8 @@ class UserService:
             # update existing user
             user.email = spotify_user.get("email")
             user.display_name = spotify_user.get("display_name")
-            user.profile_image_url = spotify_user.get("images", [{}])[0].get("url")
+            images = spotify_user.get("images") or []
+            user.profile_image_url = images[0].get("url") if images else None
             user.spotify_product = spotify_user.get("product")
             user.spotify_access_token = access_token
             if refresh_token:
@@ -69,11 +70,12 @@ class UserService:
             logger.info(f"Updated user: {spotify_id}")
         else:
             # create new user
+            images = spotify_user.get("images") or []
             user = User(
                 spotify_id=spotify_id,
                 email=spotify_user.get("email"),
                 display_name=spotify_user.get("display_name"),
-                profile_image_url=spotify_user.get("images", [{}])[0].get("url"),
+                profile_image_url=images[0].get("url") if images else None,
                 spotify_product=spotify_user.get("product"),
                 spotify_access_token=access_token,
                 spotify_refresh_token=refresh_token,

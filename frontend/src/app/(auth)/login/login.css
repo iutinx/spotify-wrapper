@@ -301,6 +301,11 @@
   100% { box-shadow: 0 0 0 0 rgba(33, 197, 93, 0); }
 }
 
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 /* Custom cursor */
 .resonance-login .cursor {
   position: fixed;
