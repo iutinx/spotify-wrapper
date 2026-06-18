@@ -197,7 +197,7 @@ export interface FriendRequest {
 
 export interface LeaderboardEntry {
   rank: number;
-  user: User;
+  user: SearchUser;
   total_hours_listened: number;
   listening_streak: number;
 }
@@ -294,6 +294,38 @@ export interface Conversation {
   last_message: DirectMessage | null;
   unread_count: number;
   created_at: string;
+}
+
+export interface SearchUser {
+  id: string;
+  display_name: string | null;
+  profile_image_url: string | null;
+  bio: string | null;
+  favorite_genres: string[] | null;
+}
+
+export interface SharedFieldVisibility {
+  visibility: "public" | "friends_only" | "private";
+  visible: boolean;
+}
+
+export interface PublicProfileResponse {
+  id: string;
+  display_name: string | null;
+  handle: string | null;
+  profile_image_url: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  relation: "self" | "friend" | "stranger";
+  shared: Record<string, SharedFieldVisibility>;
+}
+
+export interface LiveUserActivity {
+  user_id: string;
+  display_name: string | null;
+  profile_image_url: string | null;
+  track: CurrentlyPlayingTrack;
+  updated_at: string;
 }
 
 export interface ListeningStatsResponse {

@@ -5,7 +5,9 @@ import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/hooks/useAuth";
 import { useFriends } from "@/hooks/useSocial";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import { MatchDetailSheet } from "@/components/social/match-detail";
+import { angleFor, msToClock } from "@/lib/utils";
 import type { Friend, LeaderboardEntry, MusicMatch } from "@/types";
 
 const SEG_LABELS = ["THIS WEEK", "6 MONTHS", "ALL TIME"] as const;
@@ -16,21 +18,6 @@ function formatMins(totalMinutes: number): string {
     return (totalMinutes / 1000).toFixed(1).replace(/\.0$/, "") + "k";
   }
   return Math.round(totalMinutes).toString();
-}
-
-/* mm:ss from a millisecond offset */
-function msToClock(ms: number): string {
-  const total = Math.max(0, Math.floor(ms / 1000));
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
-}
-
-/* deterministic gradient angle from a string id */
-function angleFor(seed: string): string {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) % 360;
-  return `${h}deg`;
 }
 
 /* ── match dial (SVG donut with centered number) ── */
@@ -116,24 +103,6 @@ function AvRing({ prog, a, image }: { prog: number; a: string; image?: string | 
   );
 }
 
-/* ── placeholder data (used when the API has nothing yet) ── */
-const PODIUM_FALLBACK = [
-  { cls: "p2", name: "Devin K.", mins: "7.1k", a: "160deg", rank: 2 },
-  { cls: "p1", name: "Ava R.", mins: "8.4k", a: "20deg", rank: 1 },
-  { cls: "p3", name: "Mona L.", mins: "6.3k", a: "280deg", rank: 3 },
-];
-const ROWS_FALLBACK = [
-  { rank: 4, name: "Theo W.", a: "70deg", bar: 70, mins: "5.9k", pct: 78 },
-  { rank: 5, name: "Priya S.", a: "110deg", bar: 62, mins: "5.2k", pct: 74 },
-  { rank: 6, name: "Sam O.", a: "20deg", bar: 54, mins: "4.8k", pct: 69 },
-  { rank: 7, name: "Noor A.", a: "300deg", bar: 46, mins: "4.1k", pct: 63 },
-];
-const LIVE_FALLBACK = [
-  { name: "Ava R.", track: "Slow Tide — Marrow", a: "20deg", prog: 64, time: "0:41" },
-  { name: "Devin K.", track: "Amber Hours — Kite Season", a: "160deg", prog: 40, time: "1:52" },
-  { name: "Priya S.", track: "Northbound — Halcyon Bay", a: "110deg", prog: 80, time: "0:33" },
-  { name: "Sam O.", track: "Last Train — Echo & Ivy", a: "300deg", prog: 24, time: "2:48" },
-];
 
 export default function FriendsPage() {
   const { user: currentUser } = useAuth();
@@ -142,7 +111,9 @@ export default function FriendsPage() {
 
   const { data: friends } = useFriends();
 
-  const { data: leaderboard } = useQuery({
+  const { liveUsers } = useWebSocket();
+
+  const { data: leaderboard, isLoading: leaderboardLoading } = useQuery({
     queryKey: ["leaderboard"],
     queryFn: async () => {
       try {
@@ -207,42 +178,41 @@ export default function FriendsPage() {
     }));
   }, [lbEntries, maxMins]);
 
-  /* ── friends listening live right now ── */
+  /* ── friends listening live right now (driven by WebSocket activity_update) ── */
   const liveFriends = useMemo(() => {
     if (!friends) return null;
-    const playing = friends
-      .filter((f) => f.currently_playing?.is_playing && f.currently_playing.track.track_name)
-      .map((f) => {
-        const cp = f.currently_playing!;
-        const dur = cp.track.duration_ms || 0;
-        const prog = dur > 0 ? Math.min(100, Math.round((cp.progress_ms / dur) * 100)) : 0;
-        return {
-          name: f.display_name,
-          track: `${cp.track.track_name} — ${cp.track.artist_name ?? "Unknown"}`,
-          image: f.profile_image_url,
-          a: angleFor(f.user_id),
-          prog,
-          time: msToClock(cp.progress_ms),
-        };
+    const result: { name: string; track: string; image: string | null; a: string; prog: number; time: string }[] = [];
+    liveUsers.forEach((wsEntry, userId) => {
+      const friend = friends.find((f) => f.user_id === userId);
+      if (!friend || !wsEntry.track.is_playing) return;
+      const dur = wsEntry.track.duration_ms || 0;
+      const prog = dur > 0 ? Math.min(100, Math.round(((wsEntry.track.progress_ms ?? 0) / dur) * 100)) : 0;
+      result.push({
+        name: friend.display_name,
+        track: `${wsEntry.track.track_name} — ${wsEntry.track.artist_name ?? "Unknown"}`,
+        image: friend.profile_image_url,
+        a: angleFor(friend.user_id),
+        prog,
+        time: msToClock(wsEntry.track.progress_ms ?? 0),
       });
-    return playing.length > 0 ? playing : null;
-  }, [friends]);
+    });
+    return result.length > 0 ? result : null;
+  }, [friends, liveUsers]);
 
-  const liveCount = liveFriends?.length ?? LIVE_FALLBACK.length;
+  const liveCount = liveFriends?.length ?? 0;
 
-  /* ── closest-match card display values (real or placeholder) ── */
-  const cmName = closestFriend?.display_name ?? "Ava R.";
-  const cmPct = closestFriend?.music_match_percentage ?? 92;
+  /* ── closest-match card display values ── */
+  const cmName = closestFriend?.display_name ?? null;
+  const cmPct = closestFriend?.music_match_percentage ?? 0;
   const cmNow = closestFriend?.currently_playing?.is_playing
     ? closestFriend.currently_playing.track
     : null;
-  const sharedGenres = closestMatch?.breakdown.top_shared_genres?.slice(0, 2) ?? ["indie", "lo-fi"];
+  const sharedGenres = closestMatch?.breakdown.top_shared_genres?.slice(0, 2) ?? [];
   const extraShared = closestMatch?.breakdown.shared_genres_count
     ? Math.max(0, closestMatch.breakdown.shared_genres_count - sharedGenres.length)
-    : 3;
+    : 0;
   const sharedArtists =
-    closestMatch?.breakdown.top_shared_artists?.slice(0, 4).map((x) => x.artist_name) ??
-    ["Marrow", "Kite Season", "Mona Lin", "The Owls"];
+    closestMatch?.breakdown.top_shared_artists?.slice(0, 4).map((x) => x.artist_name) ?? [];
 
   return (
     <main className="db-page" data-screen-label="Friends">
@@ -266,54 +236,78 @@ export default function FriendsPage() {
       {/* leaderboard */}
       <section className="db-card" style={{ marginTop: 28 }}>
         <div className="db-card-head">
-          <span className="db-lbl">Leaderboard · minutes this week</span>
+          <span className="db-lbl">
+            Leaderboard · minutes{segIdx !== 2 && <> · <span style={{ opacity: 0.5, fontSize: 11 }}>all-time</span></>}
+          </span>
           <span className="db-more">⋯</span>
         </div>
         <div className="db-lb-grid">
-          {/* podium */}
-          <div className="db-podium">
-            {(podium ?? PODIUM_FALLBACK).map((p) => (
-              <div className={`db-pod ${p.cls}`} key={p.cls}>
-                <div
-                  className={`db-favatar db-pava${("image" in p && p.image) ? "" : " gen"}`}
-                  style={
-                    "image" in p && p.image
-                      ? { backgroundImage: `url(${p.image})` }
-                      : ({ "--a": p.a } as React.CSSProperties)
-                  }
-                />
-                <div className="db-pn">{p.name}</div>
-                <div className="db-pm">{p.mins} min</div>
-                <div className="db-ped">
-                  <span className="db-prk">{p.rank}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-          {/* ranked rows 4–7 */}
-          <div className="db-lb-rows">
-            {(rows ?? ROWS_FALLBACK).map((r) => (
-              <div className="db-lb-row" key={r.rank}>
-                <span className="db-lrk">{r.rank}</span>
-                <div
-                  className={`db-favatar db-lb-av${("image" in r && r.image) ? "" : " gen"}`}
-                  style={
-                    "image" in r && r.image
-                      ? { backgroundImage: `url(${r.image})` }
-                      : ({ "--a": r.a } as React.CSSProperties)
-                  }
-                />
-                <div className="db-lb-meta">
-                  <div className="db-lb-name">{r.name}</div>
-                  <div className="db-lb-bar">
-                    <i style={{ width: `${r.bar}%` }} />
+          {leaderboardLoading ? (
+            <>
+              <div className="db-podium">
+                {(["p2", "p1", "p3"] as const).map((cls) => (
+                  <div className={`db-pod ${cls}`} key={cls}>
+                    <div className="db-favatar db-pava gen" style={{ "--a": "120deg" } as React.CSSProperties} />
+                    <div className="db-pn" style={{ opacity: 0.3, background: "var(--db-hair)", borderRadius: 4, height: 14, width: 60 }} />
+                    <div className="db-pm" style={{ opacity: 0.2, background: "var(--db-hair)", borderRadius: 4, height: 11, width: 40, marginTop: 4 }} />
+                    <div className="db-ped"><span className="db-prk">·</span></div>
                   </div>
-                </div>
-                <span className="db-lb-mins">{r.mins}</span>
-                <Dial pct={r.pct} size={40} />
+                ))}
               </div>
-            ))}
-          </div>
+              <div className="db-lb-rows">
+                {[4, 5, 6, 7].map((rank) => (
+                  <div className="db-lb-row" key={rank} style={{ opacity: 0.4 }}>
+                    <span className="db-lrk">{rank}</span>
+                    <div className="db-favatar db-lb-av gen" style={{ "--a": "180deg" } as React.CSSProperties} />
+                    <div className="db-lb-meta">
+                      <div className="db-lb-name" style={{ background: "var(--db-hair)", borderRadius: 4, height: 13, width: 80 }} />
+                      <div className="db-lb-bar"><i style={{ width: "40%" }} /></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : lbEntries.length < 3 ? (
+            <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "32px 0", color: "var(--db-ink-faint)", fontSize: 13 }}>
+              <div style={{ marginBottom: 6 }}>Not enough data yet</div>
+              <div style={{ fontSize: 11 }}>Invite friends to build your leaderboard.</div>
+            </div>
+          ) : (
+            <>
+              <div className="db-podium">
+                {podium!.map((p) => (
+                  <div className={`db-pod ${p.cls}`} key={p.cls}>
+                    <div
+                      className={`db-favatar db-pava${p.image ? "" : " gen"}`}
+                      style={p.image ? { backgroundImage: `url(${p.image})` } : ({ "--a": p.a } as React.CSSProperties)}
+                    />
+                    <div className="db-pn">{p.name}</div>
+                    <div className="db-pm">{p.mins} min</div>
+                    <div className="db-ped"><span className="db-prk">{p.rank}</span></div>
+                  </div>
+                ))}
+              </div>
+              {rows && (
+                <div className="db-lb-rows">
+                  {rows.map((r) => (
+                    <div className="db-lb-row" key={r.rank}>
+                      <span className="db-lrk">{r.rank}</span>
+                      <div
+                        className={`db-favatar db-lb-av${r.image ? "" : " gen"}`}
+                        style={r.image ? { backgroundImage: `url(${r.image})` } : ({ "--a": r.a } as React.CSSProperties)}
+                      />
+                      <div className="db-lb-meta">
+                        <div className="db-lb-name">{r.name}</div>
+                        <div className="db-lb-bar"><i style={{ width: `${r.bar}%` }} /></div>
+                      </div>
+                      <span className="db-lb-mins">{r.mins}</span>
+                      <Dial pct={r.pct} size={40} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </section>
 
@@ -327,56 +321,55 @@ export default function FriendsPage() {
               live
             </span>
           </div>
-          <div className="db-cm-row">
-            <Dial pct={cmPct} size={104} label="MATCH" />
-            <div className="db-cm-info">
-              <div className="db-cm-name">{cmName}</div>
-              <div className="db-cm-now">
-                {cmNow ? (
-                  <>
-                    <span className="db-eq">
-                      <i />
-                      <i />
-                      <i />
-                    </span>{" "}
-                    <b>{cmNow.track_name}</b> — {cmNow.artist_name}
-                  </>
-                ) : (
-                  <span style={{ color: "var(--db-ink-faint)" }}>not listening right now</span>
-                )}
-              </div>
-              <div className="db-chips">
-                {sharedGenres.map((g) => (
-                  <span className="db-chip accent" key={g}>
-                    {g}
-                  </span>
-                ))}
-                {extraShared > 0 && <span className="db-chip">+{extraShared} shared</span>}
-              </div>
+          {!closestFriend ? (
+            <div style={{ padding: "28px 0", textAlign: "center", color: "var(--db-ink-faint)", fontSize: 13 }}>
+              <div style={{ marginBottom: 6 }}>No friends added yet</div>
+              <div style={{ fontSize: 11 }}>Add friends to see your closest music match.</div>
             </div>
-          </div>
-          <div className="db-cm-shared">
-            <div className="db-sh-h">Artists you both love</div>
-            <div className="db-chips">
-              {sharedArtists.map((a) => (
-                <span className="db-chip" key={a}>
-                  {a}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="db-cm-actions">
-            <button
-              className="db-btn primary"
-              onClick={() => setCompareOpen(true)}
-              disabled={!closestMatch}
-            >
-              Compare ▸
-            </button>
-            <button className="db-btn" onClick={() => setCompareOpen(true)} disabled={!closestMatch}>
-              Profile
-            </button>
-          </div>
+          ) : (
+            <>
+              <div className="db-cm-row">
+                <Dial pct={cmPct} size={104} label="MATCH" />
+                <div className="db-cm-info">
+                  <div className="db-cm-name">{cmName}</div>
+                  <div className="db-cm-now">
+                    {cmNow ? (
+                      <>
+                        <span className="db-eq"><i /><i /><i /></span>{" "}
+                        <b>{cmNow.track_name}</b> — {cmNow.artist_name}
+                      </>
+                    ) : (
+                      <span style={{ color: "var(--db-ink-faint)" }}>not listening right now</span>
+                    )}
+                  </div>
+                  <div className="db-chips">
+                    {sharedGenres.map((g) => (
+                      <span className="db-chip accent" key={g}>{g}</span>
+                    ))}
+                    {extraShared > 0 && <span className="db-chip">+{extraShared} shared</span>}
+                  </div>
+                </div>
+              </div>
+              {sharedArtists.length > 0 && (
+                <div className="db-cm-shared">
+                  <div className="db-sh-h">Artists you both love</div>
+                  <div className="db-chips">
+                    {sharedArtists.map((a) => (
+                      <span className="db-chip" key={a}>{a}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="db-cm-actions">
+                <button className="db-btn primary" onClick={() => setCompareOpen(true)} disabled={!closestMatch}>
+                  Compare ▸
+                </button>
+                <button className="db-btn" onClick={() => setCompareOpen(true)} disabled={!closestMatch}>
+                  Profile
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="db-card">
@@ -388,16 +381,22 @@ export default function FriendsPage() {
             </span>
           </div>
           <div className="db-live-rows">
-            {(liveFriends ?? LIVE_FALLBACK).map((f, i) => (
-              <div className="db-lv-row" key={`${f.name}-${i}`}>
-                <AvRing prog={f.prog} a={f.a} image={"image" in f ? (f.image as string | null) : undefined} />
-                <div className="db-lv-meta">
-                  <div className="db-lv-n">{f.name}</div>
-                  <div className="db-lv-t">{f.track}</div>
+            {liveFriends?.length ? (
+              liveFriends.map((f, i) => (
+                <div className="db-lv-row" key={`${f.name}-${i}`}>
+                  <AvRing prog={f.prog} a={f.a} image={f.image} />
+                  <div className="db-lv-meta">
+                    <div className="db-lv-n">{f.name}</div>
+                    <div className="db-lv-t">{f.track}</div>
+                  </div>
+                  <span className="db-lv-time">{f.time}</span>
                 </div>
-                <span className="db-lv-time">{f.time}</span>
+              ))
+            ) : (
+              <div style={{ padding: "24px 0", textAlign: "center", color: "var(--db-ink-faint)", fontSize: 13 }}>
+                None of your friends are listening right now.
               </div>
-            ))}
+            )}
           </div>
         </div>
       </section>
@@ -409,14 +408,14 @@ export default function FriendsPage() {
           <span className="db-pulse" />
           Synced with Spotify · 2 min ago
         </span>
-        <span>{friends?.length ?? 7} friends · v0.4.2</span>
+        <span>{friends?.length ?? 0} friends · v0.4.2</span>
       </div>
 
       <MatchDetailSheet
         open={compareOpen}
         onOpenChange={setCompareOpen}
         match={closestMatch ?? null}
-        userName={cmName}
+        userName={cmName ?? ""}
       />
     </main>
   );

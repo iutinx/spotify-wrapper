@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, UserPlus, Check } from "lucide-react";
 import { useSearchUsers, useSendFriendRequest } from "@/hooks/useSocial";
-import type { User } from "@/types";
+import type { SearchUser } from "@/types";
 
 interface FindFriendsSheetProps {
   open: boolean;
@@ -66,7 +66,7 @@ export function FindFriendsSheet({ open, onOpenChange }: FindFriendsSheetProps) 
           ) : searchQuery.data && searchQuery.data.length > 0 ? (
             <ScrollArea className="h-96">
               <div className="space-y-2">
-                {searchQuery.data.map((user: User) => {
+                {searchQuery.data.map((user: SearchUser) => {
                   const isSent = sentRequests.has(user.id);
                   const isPending = sendRequestMutation.isPending && sendRequestMutation.variables === user.id;
 
@@ -77,7 +77,7 @@ export function FindFriendsSheet({ open, onOpenChange }: FindFriendsSheetProps) 
                           {user.profile_image_url ? (
                             <img
                               src={user.profile_image_url}
-                              alt={user.display_name}
+                              alt={user.display_name ?? "User"}
                               className="w-full h-full object-cover"
                             />
                           ) : (
@@ -86,8 +86,8 @@ export function FindFriendsSheet({ open, onOpenChange }: FindFriendsSheetProps) 
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{user.display_name}</p>
-                          {user.email && (
-                            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                          {user.bio && (
+                            <p className="text-xs text-muted-foreground truncate">{user.bio}</p>
                           )}
                         </div>
                         <Button

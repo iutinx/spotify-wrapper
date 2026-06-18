@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
+import { usePublicProfile, useSendFriendRequest } from "@/hooks/useSocial";
 
 /* ── SVG icon set ── */
 const ICONS: Record<string, React.ReactNode> = {
@@ -214,11 +215,42 @@ function BadgesModal({ onClose }: { onClose: () => void }) {
 
 export default function UserProfilePage() {
   const router = useRouter();
+  const params = useParams();
+  const userId = params.userId as string;
+
+  const { data: profile, isLoading, isError } = usePublicProfile(userId);
+  const { mutate: sendRequest } = useSendFriendRequest();
+
   const [timePeriod, setTimePeriod] = useState<0 | 1 | 2>(1);
   const [followed, setFollowed] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
 
+  const isFriend = profile?.relation === "friend";
+  const isSelf = profile?.relation === "self";
+  const isLiveNow = profile?.shared?.nowplaying?.visible === true;
+
   const periods = ["4 WEEKS", "6 MONTHS", "ALL TIME"];
+
+  if (isError) {
+    return (
+      <main className="db-page">
+        <div className="db-head-row">
+          <div>
+            <div className="db-eyebrow">
+              <button className="db-profile-back" onClick={() => router.back()}>← Discover</button>
+            </div>
+          </div>
+        </div>
+        <div className="db-card" style={{ padding: "40px 24px", textAlign: "center" }}>
+          <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>User not found</div>
+          <div style={{ color: "var(--db-ink-faint)", fontSize: 13, marginBottom: 20 }}>
+            This profile doesn't exist or isn't available.
+          </div>
+          <button className="db-btn primary sm" onClick={() => router.back()}>Go back</button>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="db-page">
@@ -261,47 +293,71 @@ export default function UserProfilePage() {
             <span>LISTENER</span>
           </div>
 
-          <div className="db-pp-avatar" />
+          {isLoading ? (
+            <div className="db-pp-avatar" style={{ background: "var(--db-hair)", opacity: 0.4 }} />
+          ) : (profile?.avatar_url || profile?.profile_image_url) ? (
+            <div
+              className="db-pp-avatar"
+              style={{ backgroundImage: `url(${profile.avatar_url ?? profile.profile_image_url})`, backgroundSize: "cover", backgroundPosition: "center" }}
+            />
+          ) : (
+            <div className="db-pp-avatar" />
+          )}
 
-          <h2 className="db-pp-name">
-            Sam <em>Whitlock</em>
-          </h2>
-          <div className="db-pp-handle">@samw · joined Mar 2023</div>
-          <p className="db-pp-bio">
-            indie kid raised on jazz piano · always one click away from a 90s b-side · open to recs
-          </p>
+          {isLoading ? (
+            <>
+              <div style={{ height: 28, width: 140, background: "var(--db-hair)", borderRadius: 4, margin: "8px auto 4px" }} />
+              <div style={{ height: 14, width: 100, background: "var(--db-hair)", borderRadius: 4, margin: "0 auto 10px", opacity: 0.5 }} />
+              <div style={{ height: 40, width: "80%", background: "var(--db-hair)", borderRadius: 4, margin: "0 auto", opacity: 0.3 }} />
+            </>
+          ) : (
+            <>
+              <h2 className="db-pp-name">{profile?.display_name ?? "Unknown"}</h2>
+              {profile?.handle && <div className="db-pp-handle">@{profile.handle}</div>}
+              {profile?.bio && <p className="db-pp-bio">{profile.bio}</p>}
+            </>
+          )}
 
           <div className="db-pp-meta">
             <div>
-              <div className="db-pp-v">1.2k</div>
+              <div className="db-pp-v">—</div>
               <div className="db-pp-k">Followers</div>
             </div>
             <div>
-              <div className="db-pp-v">284</div>
+              <div className="db-pp-v">—</div>
               <div className="db-pp-k">Following</div>
             </div>
             <div>
-              <div className="db-pp-v">38</div>
+              <div className="db-pp-v">—</div>
               <div className="db-pp-k">Playlists</div>
             </div>
           </div>
 
-          <div className="db-pp-actions">
-            <button
-              className={`db-btn${followed ? "" : " primary"} db-pp-btn`}
-              onClick={() => setFollowed((f) => !f)}
-            >
-              {followed ? "Following" : "+ Follow"}
-            </button>
-            <button className="db-btn db-pp-btn">Message</button>
-          </div>
+          {!isSelf && (
+            <div className="db-pp-actions">
+              <button
+                className={`db-btn${(followed || isFriend) ? "" : " primary"} db-pp-btn`}
+                onClick={() => {
+                  if (!followed && !isFriend) {
+                    sendRequest(userId, { onSuccess: () => setFollowed(true) });
+                  }
+                }}
+                disabled={followed || isFriend}
+              >
+                {(followed || isFriend) ? "Connected" : "+ Connect"}
+              </button>
+              <button className="db-btn db-pp-btn" onClick={() => router.push(`/messages`)}>Message</button>
+            </div>
+          )}
 
           <div className="db-pp-foot">
-            <span>RES · 0001 · 8842</span>
-            <span className="db-pp-live">
-              <span className="db-pulse" />
-              Live now
-            </span>
+            <span>RES · Resonance</span>
+            {isLiveNow && (
+              <span className="db-pp-live">
+                <span className="db-pulse" />
+                Live now
+              </span>
+            )}
           </div>
         </aside>
 

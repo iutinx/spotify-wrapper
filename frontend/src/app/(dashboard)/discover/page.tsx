@@ -3,6 +3,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
+import { useFriends, useSendFriendRequest, useSearchUsers } from "@/hooks/useSocial";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import { angleFor, msToClock } from "@/lib/utils";
+import type { SearchUser } from "@/types";
 
 /* ── match dial (SVG donut with centered number) ── */
 function Dial({ pct, size = 84, label }: { pct: number; size?: number; label?: string }) {
@@ -54,7 +58,15 @@ function Dial({ pct, size = 84, label }: { pct: number; size?: number; label?: s
 }
 
 /* ── generative gradient avatar ── */
-function Fava({ size, a, className }: { size: number; a: string; className?: string }) {
+function Fava({ size, a, className, image }: { size: number; a: string; className?: string; image?: string | null }) {
+  if (image) {
+    return (
+      <div
+        className={`db-fava${className ? " " + className : ""}`}
+        style={{ width: size, height: size, backgroundImage: `url(${image})`, backgroundSize: "cover", backgroundPosition: "center" } as React.CSSProperties}
+      />
+    );
+  }
   return (
     <div
       className={`db-fava${className ? " " + className : ""}`}
@@ -62,41 +74,6 @@ function Fava({ size, a, className }: { size: number; a: string; className?: str
     />
   );
 }
-
-/* ── mock data (these are placeholder people, faithful to the design) ── */
-const TASTE_TWINS = [
-  { name: "Wren M.", handle: "@wrenful", pct: 94, a: "50deg", why: (<><b>14</b> shared artists incl. <b>Marrow</b></>) },
-  { name: "Iris D.", handle: "@irisd_", pct: 89, a: "160deg", why: (<><b>11</b> shared · same <b>lo-fi</b> hours</>) },
-  { name: "Jonah B.", handle: "@jonahbb", pct: 86, a: "240deg", why: (<><b>9</b> shared · loves <b>Kite Season</b></>) },
-  { name: "Luca R.", handle: "@lucalist", pct: 82, a: "320deg", why: (<><b>8</b> shared · same <b>ambient</b> niche</>) },
-  { name: "Ava K.", handle: "@avak", pct: 81, a: "110deg", why: (<><b>7</b> shared · <b>dream-pop</b> overlap</>) },
-  { name: "Devin L.", handle: "@devinl", pct: 79, a: "200deg", why: (<><b>7</b> shared · late-night listener</>) },
-  { name: "Mona T.", handle: "@monalin", pct: 77, a: "280deg", why: (<><b>6</b> shared · <b>shoegaze</b> fan</>) },
-  { name: "Priya N.", handle: "@priyan", pct: 75, a: "30deg", why: (<><b>6</b> shared · same <b>indie</b> circle</>) },
-  { name: "Sam H.", handle: "@samh", pct: 73, a: "190deg", why: (<><b>5</b> shared · <b>folk</b> enthusiast</>) },
-  { name: "Noor A.", handle: "@noora", pct: 71, a: "260deg", why: (<><b>5</b> shared · <b>neo-soul</b> hours</>) },
-  { name: "Ellis W.", handle: "@ellisw", pct: 69, a: "340deg", why: (<><b>4</b> shared · <b>slowcore</b> niche</>) },
-  { name: "Remy J.", handle: "@remyj", pct: 67, a: "70deg", why: (<><b>4</b> shared · <b>bedroom-pop</b> fan</>) },
-];
-
-const FOF = [
-  { name: "Pearl O.", pct: 78, a: "80deg", why: (<>followed by <b>Ava</b>, <b>Devin</b> +2</>) },
-  { name: "Theo P.", pct: 72, a: "140deg", why: (<>followed by <b>Mona</b>, <b>Priya</b></>) },
-  { name: "Sasha I.", pct: 69, a: "220deg", why: (<>followed by <b>Sam</b>, <b>Noor</b> +3</>) },
-  { name: "Marin C.", pct: 65, a: "20deg", why: (<>followed by <b>Ava</b>, <b>Devin</b></>) },
-  { name: "Quinn R.", pct: 62, a: "300deg", why: (<>followed by <b>Wren</b>, <b>Luca</b></>) },
-  { name: "Harper S.", pct: 58, a: "170deg", why: (<>followed by <b>Jonah</b>, <b>Iris</b> +1</>) },
-  { name: "Felix M.", pct: 55, a: "250deg", why: (<>followed by <b>Pearl</b>, <b>Theo</b></>) },
-  { name: "Zara K.", pct: 52, a: "90deg", why: (<>followed by <b>Sasha</b>, <b>Marin</b></>) },
-];
-
-const PULSE = [
-  { name: "Wren M.", track: "Slow Tide — Marrow", a: "50deg", time: "0:42" },
-  { name: "Iris D.", track: "Cinder — The Owls", a: "160deg", time: "1:18" },
-  { name: "Jonah B.", track: "Amber Hours — Kite Season", a: "240deg", time: "2:05" },
-  { name: "Luca R.", track: "Driftwood — Halcyon Bay", a: "320deg", time: "0:31" },
-  { name: "Marin C.", track: "Glasshouse — Marrow", a: "90deg", time: "3:12" },
-];
 
 const VIBES: { label: string; accent?: boolean }[] = [
   { label: "indie", accent: true },
@@ -112,114 +89,31 @@ const VIBES: { label: string; accent?: boolean }[] = [
   { label: "dream-pop" },
 ];
 
-const SUGGESTIONS = ["marrow", "indie sad-girl", "lo-fi at 2am", "kite season fans", "@ava"];
-
-type Connection = "fof" | "stranger" | "followed";
-type Activity = "now" | "week" | "older";
-
-interface Person {
-  name: string;
-  handle: string;
-  mins: string;
-  pct: number;
-  a: string;
-  connection: Connection;
-  genres: string[];
-  activity: Activity;
-  recency: number; // minutes since last active — lower is more recent
-  why: React.ReactNode;
-  bio?: string; // pin handle line; falls back to a generated one
-}
-
-/* the searchable people pool — Wren leads so she can pin as the top match */
-const PEOPLE: Person[] = [
-  {
-    name: "Wren M.", handle: "@wrenful", mins: "6.2k", pct: 94, a: "50deg",
-    connection: "fof", genres: ["indie", "lo-fi", "dream-pop"], activity: "now", recency: 0,
-    bio: "@wrenful · she/her · 6.2k min",
-    why: (<><b>14</b> shared artists incl. <mark>Marrow</mark>, Kite Season · same lo-fi hours</>),
-  },
-  {
-    name: "Iris D.", handle: "@irisd_", mins: "4.8k", pct: 89, a: "160deg",
-    connection: "stranger", genres: ["lo-fi", "ambient", "shoegaze"], activity: "now", recency: 3,
-    why: (<>11 shared · loves <mark>Marrow</mark></>),
-  },
-  {
-    name: "Jonah B.", handle: "@jonahbb", mins: "3.4k", pct: 86, a: "240deg",
-    connection: "stranger", genres: ["indie", "jazz", "folk"], activity: "week", recency: 240,
-    why: (<>9 shared · incl. <mark>Marrow</mark> + Kite Season</>),
-  },
-  {
-    name: "Luca R.", handle: "@lucalist", mins: "5.1k", pct: 82, a: "320deg",
-    connection: "followed", genres: ["ambient", "neo-soul"], activity: "now", recency: 12,
-    why: (<>8 shared · same ambient niche · top: <mark>Marrow</mark></>),
-  },
-  {
-    name: "Pearl O.", handle: "@pearloh", mins: "7.0k", pct: 78, a: "80deg",
-    connection: "fof", genres: ["indie", "jazz", "bedroom-pop"], activity: "week", recency: 90,
-    why: (<>friends-of-friends · 6 shared incl. <mark>Marrow</mark></>),
-  },
-  {
-    name: "Sasha I.", handle: "@sashai", mins: "2.9k", pct: 71, a: "220deg",
-    connection: "stranger", genres: ["jazz", "ambient", "slowcore"], activity: "older", recency: 4320,
-    why: (<>5 shared · same late-night hours</>),
-  },
-  {
-    name: "Marin C.", handle: "@marincee", mins: "4.2k", pct: 68, a: "20deg",
-    connection: "fof", genres: ["lo-fi", "dream-pop"], activity: "week", recency: 600,
-    why: (<>5 shared · followed by 2 friends</>),
-  },
-];
-
 /* genre options — base set is always shown, extras reveal on "+ N more" */
 const BASE_GENRES = ["Indie", "Lo-fi", "Jazz", "Ambient"];
 const EXTRA_GENRES = ["Folk", "Neo-soul", "Shoegaze", "Dream-pop", "Hyperpop", "Bedroom-pop", "Slowcore"];
 
-/* sidebar filter groups */
+/* sidebar filter groups (cosmetic — backend search doesn't support server-side filtering yet) */
 const FILTER_GROUPS = [
-  { title: "Connection", opts: ["Friends of friends", "Strangers", "Already followed"], on: ["Friends of friends"] },
-  { title: "Genres", opts: BASE_GENRES, on: ["Indie"] },
-  { title: "Activity", opts: ["Listening now", "Active this week", "Any time"], on: ["Listening now"] },
+  { title: "Connection", opts: ["Friends of friends", "Strangers", "Already followed"] },
+  { title: "Genres", opts: BASE_GENRES },
+  { title: "Activity", opts: ["Listening now", "Active this week", "Any time"] },
 ];
 
-/* map a sidebar option label → the data values it admits (broadening unions) */
-const CONNECTION_OPT: Record<string, Connection[]> = {
-  "Friends of friends": ["fof"],
-  Strangers: ["stranger"],
-  "Already followed": ["followed"],
-};
-const ACTIVITY_OPT: Record<string, Activity[]> = {
-  "Listening now": ["now"],
-  "Active this week": ["now", "week"],
-  "Any time": ["now", "week", "older"],
-};
-
-const DEFAULT_OPTS = () => {
-  const init = new Set<string>();
-  FILTER_GROUPS.forEach((g) => g.on.forEach((o) => init.add(`${g.title}:${o}`)));
-  return init;
-};
-
 const DEFAULT_RANGE = { min: 60, max: 95 };
-
 const SORTS = ["MATCH", "RECENT", "A–Z"] as const;
 
 export default function DiscoverPage() {
   const { toast } = useToast();
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const openProfile = (handle: string) => {
-    const userId = handle.replace("@", "");
-    router.push(`/discover/${userId}`);
-  };
   const trackRef = useRef<HTMLDivElement>(null);
+
+  const openProfile = (userId: string) => router.push(`/discover/${userId}`);
 
   const [query, setQuery] = useState("");
   const [sortIdx, setSortIdx] = useState(0);
-
-  /* active sidebar filter options, keyed by "group:opt" */
-  const [activeOpts, setActiveOpts] = useState<Set<string>>(DEFAULT_OPTS);
+  const [activeOpts, setActiveOpts] = useState<Set<string>>(new Set());
   const toggleOpt = (key: string) =>
     setActiveOpts((prev) => {
       const next = new Set(prev);
@@ -228,62 +122,49 @@ export default function DiscoverPage() {
       return next;
     });
 
-  /* match-score band (percent) driven by the dual-range slider */
   const [matchRange, setMatchRange] = useState(DEFAULT_RANGE);
-
-  /* whether the extra genre options are revealed */
   const [genresOpen, setGenresOpen] = useState(false);
 
   const resetFilters = () => {
-    setActiveOpts(DEFAULT_OPTS());
+    setActiveOpts(new Set());
     setMatchRange(DEFAULT_RANGE);
     toast("Filters reset");
   };
 
   const hasQuery = query.trim().length > 0;
 
-  /* ── apply the Refine controls to the people pool ── */
+  /* ── real data hooks ── */
+  const { data: friends, isLoading: friendsLoading } = useFriends();
+  const { data: searchResults, isLoading: searching } = useSearchUsers(query);
+  const { mutate: sendRequest } = useSendFriendRequest();
+  const { liveUsers } = useWebSocket();
+
+  /* ── taste twins: friends sorted by match % ── */
+  const tasteTwins = useMemo(
+    () => (friends ?? []).sort((a, b) => b.music_match_percentage - a.music_match_percentage).slice(0, 12),
+    [friends],
+  );
+
+  /* ── live pulse: public users broadcasting activity via WebSocket ── */
+  const pulseList = useMemo(
+    () => Array.from(liveUsers.values()).filter((u) => u.track.is_playing && u.track.track_name),
+    [liveUsers],
+  );
+
+  /* ── search results with client-side sort ── */
   const visible = useMemo(() => {
-    /* collect the values admitted by each connection/activity group */
-    const admitted = <T extends string>(group: string, map: Record<string, T[]>): Set<T> | null => {
-      const sel = Object.keys(map).filter((o) => activeOpts.has(`${group}:${o}`));
-      if (sel.length === 0) return null; // nothing selected → group is permissive
-      const out = new Set<T>();
-      sel.forEach((o) => map[o].forEach((v) => out.add(v)));
-      return out;
-    };
-    const conn = admitted("Connection", CONNECTION_OPT);
-    const act = admitted("Activity", ACTIVITY_OPT);
-
-    /* selected genres (lowercased); null/empty → permissive */
-    const genreSel = [...BASE_GENRES, ...EXTRA_GENRES]
-      .filter((o) => activeOpts.has(`Genres:${o}`))
-      .map((o) => o.toLowerCase());
-
-    const list = PEOPLE.filter(
-      (p) =>
-        p.pct >= matchRange.min &&
-        p.pct <= matchRange.max &&
-        (!conn || conn.has(p.connection)) &&
-        (!act || act.has(p.activity)) &&
-        (genreSel.length === 0 || p.genres.some((g) => genreSel.includes(g))),
-    );
-
-    const sorted = [...list];
-    if (sortIdx === 0) sorted.sort((a, b) => b.pct - a.pct); // MATCH
-    else if (sortIdx === 1) sorted.sort((a, b) => a.recency - b.recency); // RECENT
-    else sorted.sort((a, b) => a.name.localeCompare(b.name)); // A–Z
+    const results = searchResults ?? [];
+    const sorted = [...results];
+    if (sortIdx === 2) sorted.sort((a, b) => (a.display_name ?? "").localeCompare(b.display_name ?? ""));
     return sorted;
-  }, [activeOpts, matchRange, sortIdx]);
+  }, [searchResults, sortIdx]);
 
   const resCount = visible.length;
   const pin = visible[0] ?? null;
   const rows = visible.slice(1);
 
-  /* match-score slider: dragging anywhere on the track grabs the nearest thumb.
-     The thumbs are a tiny target and the page hides the cursor, so picking the
-     nearest handle from a track-level press is what makes this usable. */
-  const GAP = 5; // keep a minimum spread between the thumbs
+  /* match-score slider */
+  const GAP = 5;
   const pctFromEvent = (clientX: number) => {
     const tk = trackRef.current;
     if (!tk) return null;
@@ -294,7 +175,6 @@ export default function DiscoverPage() {
     e.preventDefault();
     const pct = pctFromEvent(e.clientX);
     if (pct === null) return;
-    // pick the closer thumb to where the user pressed
     const thumb: "min" | "max" =
       Math.abs(pct - matchRange.min) <= Math.abs(pct - matchRange.max) ? "min" : "max";
     const apply = (p: number) =>
@@ -316,7 +196,6 @@ export default function DiscoverPage() {
     window.addEventListener("pointerup", up);
   };
 
-  /* select a suggestion / vibe → seed the search and scroll to the bar */
   const runQuery = (q: string) => {
     setQuery(q);
     requestAnimationFrame(() => {
@@ -326,7 +205,6 @@ export default function DiscoverPage() {
     });
   };
 
-  /* ⌘K to focus, Esc to clear */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -365,7 +243,7 @@ export default function DiscoverPage() {
           <input
             ref={inputRef}
             type="text"
-            placeholder={"Search by name, handle, or “people who love Marrow”…"}
+            placeholder={"Search by name or handle…"}
             autoComplete="off"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -383,34 +261,29 @@ export default function DiscoverPage() {
           <span className="db-kbd">⌘ K</span>
         </div>
 
-        {/* when empty: try-these suggestions */}
         {!hasQuery && (
           <div className="db-sug-row">
             <span className="db-sl">Try</span>
-            {SUGGESTIONS.map((s) => (
-              <button key={s} className="db-chip ghost" onClick={() => runQuery(s)}>
-                {s}
+            {VIBES.slice(0, 5).map((v) => (
+              <button key={v.label} className="db-chip ghost" onClick={() => runQuery(v.label)}>
+                {v.label}
               </button>
             ))}
           </div>
         )}
 
-        {/* when query: active filters */}
         {hasQuery && (
           <div className="db-filter-row">
-            <span className="db-sl">Filters</span>
-            <button className="db-chip accent removable" onClick={() => toast("Removed indie filter")}>
-              indie
-            </button>
-            <button className="db-chip accent removable" onClick={() => toast("Removed match filter")}>
-              match ≥ 60%
-            </button>
-            <button className="db-chip removable" onClick={() => toast("Removed friends-of-friends")}>
-              friends-of-friends
-            </button>
-            <button className="db-chip ghost" onClick={() => toast("Add a filter")}>
-              + filter
-            </button>
+            <span className="db-sl">Sort</span>
+            {SORTS.map((s, i) => (
+              <button
+                key={s}
+                className={`db-chip${sortIdx === i ? " accent" : " ghost"}`}
+                onClick={() => setSortIdx(i)}
+              >
+                {s}
+              </button>
+            ))}
           </div>
         )}
       </div>
@@ -426,45 +299,63 @@ export default function DiscoverPage() {
               </div>
             </div>
             <div className="db-tt-scroll">
-              {TASTE_TWINS.map((p) => (
-                <div
-                  key={p.handle}
-                  className="db-card db-pcard"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openProfile(p.handle)}
-                >
-                  <span className="db-pc-corner">
-                    <Dial pct={p.pct} size={38} />
-                  </span>
-                  <Fava size={64} a={p.a} />
-                  <div>
-                    <div className="db-pc-name">{p.name}</div>
-                    <div className="db-pc-handle">{p.handle}</div>
+              {friendsLoading ? (
+                [1, 2, 3, 4].map((i) => (
+                  <div key={i} className="db-card db-pcard" style={{ opacity: 0.4 }}>
+                    <Fava size={64} a={`${i * 80}deg`} />
+                    <div style={{ height: 13, width: 70, background: "var(--db-hair)", borderRadius: 4, marginTop: 6 }} />
+                    <div style={{ height: 11, width: 50, background: "var(--db-hair)", borderRadius: 4, marginTop: 4 }} />
                   </div>
-                  <div className="db-pc-why">{p.why}</div>
-                  <div className="db-pc-acts">
-                    <button
-                      className="db-btn primary sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toast(`Followed ${p.name}`);
-                      }}
-                    >
-                      Follow
-                    </button>
-                    <button
-                      className="db-btn sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openProfile(p.handle);
-                      }}
-                    >
-                      View
-                    </button>
-                  </div>
+                ))
+              ) : tasteTwins.length === 0 ? (
+                <div style={{ padding: "24px 16px", textAlign: "center", color: "var(--db-ink-faint)", fontSize: 13, minWidth: 220 }}>
+                  <div style={{ marginBottom: 6 }}>No taste twins yet</div>
+                  <div style={{ fontSize: 11 }}>Add friends to see who shares your listening style.</div>
                 </div>
-              ))}
+              ) : (
+                tasteTwins.map((f) => (
+                  <div
+                    key={f.user_id}
+                    className="db-card db-pcard"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openProfile(f.user_id)}
+                  >
+                    <span className="db-pc-corner">
+                      <Dial pct={f.music_match_percentage} size={38} />
+                    </span>
+                    <Fava size={64} a={angleFor(f.user_id)} image={f.profile_image_url} />
+                    <div>
+                      <div className="db-pc-name">{f.display_name}</div>
+                      <div className="db-pc-handle">{f.music_match_percentage}% match</div>
+                    </div>
+                    <div className="db-pc-why">{f.music_match_percentage}% music match</div>
+                    <div className="db-pc-acts">
+                      <button
+                        className="db-btn primary sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          sendRequest(f.user_id, {
+                            onSuccess: () => toast(`Friend request sent to ${f.display_name}`),
+                            onError: () => toast("Already friends or request pending"),
+                          });
+                        }}
+                      >
+                        Connect
+                      </button>
+                      <button
+                        className="db-btn sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openProfile(f.user_id);
+                        }}
+                      >
+                        View
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </section>
 
@@ -477,25 +368,10 @@ export default function DiscoverPage() {
                 </div>
               </div>
               <div className="db-fof-scroll">
-                {FOF.map((f) => (
-                  <div key={f.name} className="db-fof-row" role="button" tabIndex={0} onClick={() => openProfile(f.name.replace(" ", "").toLowerCase())}>
-                    <Fava size={42} a={f.a} />
-                    <div>
-                      <div className="db-fof-name">{f.name}</div>
-                      <div className="db-fof-why">{f.why}</div>
-                    </div>
-                    <Dial pct={f.pct} size={40} />
-                    <button
-                      className="db-btn primary sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toast(`Followed ${f.name}`);
-                      }}
-                    >
-                      Follow
-                    </button>
-                  </div>
-                ))}
+                <div style={{ padding: "24px 0", textAlign: "center", color: "var(--db-ink-faint)", fontSize: 13 }}>
+                  <div style={{ marginBottom: 6 }}>No mutual suggestions yet</div>
+                  <div style={{ fontSize: 11 }}>Add more friends to discover who they follow.</div>
+                </div>
               </div>
             </div>
 
@@ -503,20 +379,27 @@ export default function DiscoverPage() {
               <div className="db-card-head">
                 <div className="db-h-title">Pulse</div>
                 <span className="db-live-tag">
-                  <span className="db-pulse" />5 live
+                  <span className="db-pulse" />
+                  {pulseList.length} live
                 </span>
               </div>
               <div className="db-prows">
-                {PULSE.map((p, i) => (
-                  <div className="db-prow" key={`${p.name}-${i}`}>
-                    <Fava size={32} a={p.a} />
-                    <div className="db-prow-meta">
-                      <div className="db-prow-n">{p.name}</div>
-                      <div className="db-prow-t">{p.track}</div>
-                    </div>
-                    <span className="db-prow-time">{p.time}</span>
+                {pulseList.length === 0 ? (
+                  <div style={{ padding: "20px 0", textAlign: "center", color: "var(--db-ink-faint)", fontSize: 12 }}>
+                    No one is listening publicly right now.
                   </div>
-                ))}
+                ) : (
+                  pulseList.map((u, i) => (
+                    <div className="db-prow" key={`${u.user_id}-${i}`}>
+                      <Fava size={32} a={angleFor(u.user_id)} image={u.profile_image_url} />
+                      <div className="db-prow-meta">
+                        <div className="db-prow-n">{u.display_name ?? "Unknown"}</div>
+                        <div className="db-prow-t">{u.track.track_name} — {u.track.artist_name ?? "Unknown"}</div>
+                      </div>
+                      <span className="db-prow-time">{msToClock(u.track.progress_ms ?? 0)}</span>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </section>
@@ -534,8 +417,8 @@ export default function DiscoverPage() {
                   {v.label}
                 </button>
               ))}
-              <button className="db-chip ghost" onClick={() => toast("More vibes")}>
-                + 24 more
+              <button className="db-chip ghost" onClick={() => toast("More vibes coming soon")}>
+                + more
               </button>
             </div>
           </section>
@@ -615,12 +498,18 @@ export default function DiscoverPage() {
           <div className="db-results-main">
             <div className="db-results-head">
               <div className="db-res-count">
-                <b>{resCount}</b> people match{" "}
-                <span>
-                  “
-                  <i style={{ fontFamily: "var(--font-serif), serif", color: "var(--db-ink)" }}>{query}</i>
-                  ” + your filters
-                </span>
+                {searching ? (
+                  <span style={{ color: "var(--db-ink-faint)" }}>Searching…</span>
+                ) : (
+                  <>
+                    <b>{resCount}</b> people match{" "}
+                    <span>
+                      "
+                      <i style={{ fontFamily: "var(--font-serif), serif", color: "var(--db-ink)" }}>{query}</i>
+                      "
+                    </span>
+                  </>
+                )}
               </div>
               <div className="db-seg">
                 {SORTS.map((s, i) => (
@@ -631,35 +520,53 @@ export default function DiscoverPage() {
               </div>
             </div>
 
-            {pin ? (
+            {searching ? (
+              <div className="db-card db-result-list">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="db-res" style={{ opacity: 0.4 }}>
+                    <Fava size={44} a={`${i * 120}deg`} />
+                    <div>
+                      <div style={{ height: 14, width: 100, background: "var(--db-hair)", borderRadius: 4, marginBottom: 6 }} />
+                      <div style={{ height: 11, width: 140, background: "var(--db-hair)", borderRadius: 4 }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : pin ? (
               <>
                 {/* pinned top match */}
-                <div className="db-pin" role="button" tabIndex={0} onClick={() => openProfile(pin.handle)}>
-                  <span className="db-pin-tag">top match</span>
-                  <Fava size={84} a={pin.a} />
+                <div className="db-pin" role="button" tabIndex={0} onClick={() => openProfile(pin.id)}>
+                  <span className="db-pin-tag">top result</span>
+                  <Fava size={84} a={angleFor(pin.id)} image={pin.profile_image_url} />
                   <div className="db-pin-info">
-                    <div className="db-pin-name">{pin.name}</div>
+                    <div className="db-pin-name">{pin.display_name}</div>
                     <div className="db-pin-handle">
-                      {pin.bio ?? `${pin.handle} · ${pin.mins} min`}
+                      {pin.bio ?? `listener on Resonance`}
                     </div>
-                    <div className="db-pin-why">{pin.why}</div>
+                    {pin.favorite_genres && pin.favorite_genres.length > 0 && (
+                      <div className="db-pin-why">
+                        {pin.favorite_genres.slice(0, 3).join(" · ")}
+                      </div>
+                    )}
                   </div>
-                  <Dial pct={pin.pct} size={84} label="MATCH" />
                   <div className="db-pin-acts">
                     <button
                       className="db-btn primary"
                       onClick={(e) => {
                         e.stopPropagation();
-                        toast(`Followed ${pin.name}`);
+                        sendRequest(pin.id, {
+                          onSuccess: () => toast(`Friend request sent to ${pin.display_name}`),
+                          onError: () => toast("Already friends or request pending"),
+                        });
                       }}
                     >
-                      + Follow
+                      + Connect
                     </button>
                     <button
                       className="db-btn"
                       onClick={(e) => {
                         e.stopPropagation();
-                        openProfile(pin.handle);
+                        openProfile(pin.id);
                       }}
                     >
                       View profile
@@ -671,45 +578,42 @@ export default function DiscoverPage() {
                 {rows.length > 0 && (
                   <div className="db-card db-result-list">
                     {rows.map((r) => (
-                      <div key={r.handle} className="db-res" role="button" tabIndex={0} onClick={() => openProfile(r.handle)}>
-                        <Fava size={44} a={r.a} />
+                      <div key={r.id} className="db-res" role="button" tabIndex={0} onClick={() => openProfile(r.id)}>
+                        <Fava size={44} a={angleFor(r.id)} image={r.profile_image_url} />
                         <div>
-                          <div className="db-res-name">{r.name}</div>
+                          <div className="db-res-name">{r.display_name}</div>
                           <div className="db-res-handle">
-                            {r.handle} · {r.mins} min
+                            {r.bio ?? "listener on Resonance"}
                           </div>
-                          <div className="db-res-why">{r.why}</div>
+                          {r.favorite_genres && r.favorite_genres.length > 0 && (
+                            <div className="db-res-why">{r.favorite_genres.slice(0, 2).join(" · ")}</div>
+                          )}
                         </div>
-                        <Dial pct={r.pct} size={48} />
                         <div className="db-res-acts">
                           <button
                             className="db-btn primary sm"
                             onClick={(e) => {
                               e.stopPropagation();
-                              toast(`Followed ${r.name}`);
+                              sendRequest(r.id, {
+                                onSuccess: () => toast(`Friend request sent to ${r.display_name}`),
+                                onError: () => toast("Already friends or request pending"),
+                              });
                             }}
                           >
-                            Follow
+                            Connect
                           </button>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
-
-                <div className="db-load-more">
-                  <button className="db-btn" onClick={() => toast("Loading 12 more…")}>
-                    Load 12 more
-                  </button>
-                </div>
               </>
             ) : (
-              /* nothing matches the current filters */
               <div className="db-card db-no-results">
-                <div className="db-nr-title">No people match these filters</div>
-                <div className="db-nr-sub">Try widening the match score or clearing a filter.</div>
-                <button className="db-btn primary sm" onClick={resetFilters}>
-                  Reset filters
+                <div className="db-nr-title">No people match &ldquo;{query}&rdquo;</div>
+                <div className="db-nr-sub">Try a different name or handle.</div>
+                <button className="db-btn primary sm" onClick={() => setQuery("")}>
+                  Clear search
                 </button>
               </div>
             )}

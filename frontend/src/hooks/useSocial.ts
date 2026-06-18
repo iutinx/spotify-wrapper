@@ -2,20 +2,55 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
-import type { Friend, FriendRequest, User } from "@/types";
+import { useAuth } from "@/hooks/useAuth";
+import type { Friend, FriendRequest, PublicProfileResponse, SearchUser, User } from "@/types";
+
+interface BackendFriendshipResponse {
+  id: string;
+  status: string;
+  created_at: string;
+  requester?: SearchUser & { id: string };
+  receiver?: SearchUser & { id: string };
+}
 
 export function useFriends() {
+  const { user } = useAuth();
   return useQuery({
     queryKey: ["friends"],
     queryFn: async () => {
       try {
-        const response = await apiClient.get<{ items: Friend[] }>("/api/social/friends");
-        return response.data.items || [];
+        const response = await apiClient.get<{ items: BackendFriendshipResponse[] }>("/api/social/friends");
+        const currentUserId = user?.id;
+        return (response.data.items || []).map((f): Friend => {
+          const other = f.requester?.id === currentUserId ? f.receiver : f.requester;
+          return {
+            id: f.id,
+            user_id: other?.id ?? "",
+            display_name: other?.display_name ?? "Unknown",
+            profile_image_url: other?.profile_image_url ?? null,
+            is_online: false,
+            music_match_percentage: 0,
+            currently_playing: null,
+            status: f.status as "pending" | "accepted",
+          };
+        });
       } catch (error) {
         console.error("Failed to fetch friends:", error);
         return [];
       }
     },
+    enabled: !!user,
+  });
+}
+
+export function usePublicProfile(userId: string | undefined) {
+  return useQuery({
+    queryKey: ["public-profile", userId],
+    queryFn: async () => {
+      const res = await apiClient.get<PublicProfileResponse>(`/api/users/${userId}/shared`);
+      return res.data;
+    },
+    enabled: !!userId,
   });
 }
 
@@ -39,7 +74,7 @@ export function useSearchUsers(query?: string) {
     queryKey: ["search-users", query],
     queryFn: async () => {
       if (!query || query.length < 1) return [];
-      const response = await apiClient.get<{ items: User[] }>("/api/social/search", {
+      const response = await apiClient.get<{ items: SearchUser[] }>("/api/social/search", {
         params: { q: query, limit: 20 },
       });
       return response.data.items || [];
@@ -116,6 +151,6 @@ export function useMusicMatch(userId: string) {
       const response = await apiClient.get(`/api/social/match/${userId}`);
       return response.data;
     },
-    enabled: false,
+    enabled: !!userId,
   });
 }
